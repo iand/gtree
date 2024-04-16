@@ -145,7 +145,7 @@ func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) *AncestorLayout {
 	// reposition blurbs
 
 	lowestTopPos := Pixel(200000)
-	x := Pixel(l.opts.Margin)
+	x := l.opts.Margin
 	// number of divisions is 2^col (col 0 has entire vertical space, col 1 splits it in two, col 2 splits in four)
 	divisions := 1
 	for col := range l.grid {

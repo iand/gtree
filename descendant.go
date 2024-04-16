@@ -6,7 +6,6 @@ import (
 	"math"
 	prand "math/rand"
 	"strings"
-	"sync"
 )
 
 type DescendantChart struct {
@@ -97,7 +96,6 @@ type DescendantLayout struct {
 	blurbs     map[int]*Blurb
 	connectors []*Connector
 	rows       [][]*Blurb
-	initOnce   sync.Once
 }
 
 func (l *DescendantLayout) Width() Pixel { return l.width }
