@@ -5,6 +5,19 @@ import (
 	"fmt"
 )
 
+// SVG generates an SVG (Scalable Vector Graphics) representation of the provided layout.
+// It takes a Layout interface as input and returns a string containing the SVG markup, or an error if the generation fails.
+//
+// The SVG output includes:
+// - The XML declaration and SVG root element with specified width and height based on the layout dimensions.
+// - A white background covering the entire SVG canvas.
+// - The title of the chart, if provided, rendered at the top of the SVG.
+// - Any notes, rendered below the title, with appropriate spacing.
+// - Blurbs representing individuals or family members, each with their associated text and optional background rectangle if debug mode is enabled.
+// - Connectors, represented as paths, connecting blurbs according to their relationships.
+//
+// The function iterates over the layout elements (title, notes, blurbs, connectors), converts their properties to SVG-compatible attributes,
+// and appends them to an internal buffer. Finally, it returns the complete SVG as a string.
 func SVG(lay Layout) (string, error) {
 	buf := new(bytes.Buffer)
 
@@ -17,14 +30,14 @@ func SVG(lay Layout) (string, error) {
 	var y Pixel
 	title := lay.Title()
 	if title.Text != "" {
-		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"alphabetic\" text-anchor=\"start\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", length(lay.Margin()), length(lay.Margin()+title.LineHeight), title.FontSize, title.Text)
-		y += title.LineHeight
+		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"alphabetic\" text-anchor=\"start\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", length(lay.Margin()), length(lay.Margin()+title.Style.LineHeight), title.Style.FontSize, title.Text)
+		y += title.Style.LineHeight
 	}
 
 	notes := lay.Notes()
 	for i := range notes {
-		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"alphabetic\" text-anchor=\"start\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", length(lay.Margin()), length(lay.Margin()+notes[i].LineHeight+y), notes[i].FontSize, notes[i].Text)
-		y += notes[i].LineHeight
+		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"alphabetic\" text-anchor=\"start\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", length(lay.Margin()), length(lay.Margin()+notes[i].Style.LineHeight+y), notes[i].Style.FontSize, notes[i].Text)
+		y += notes[i].Style.LineHeight
 	}
 
 	// Draw blurbs
@@ -41,12 +54,12 @@ func SVG(lay Layout) (string, error) {
 			textx = length(b.X())
 		}
 		if len(b.DetailTexts) == 0 {
-			fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", textx, length(b.TopPos), textAnchor, b.HeadingFontSize, b.HeadingText)
+			fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", textx, length(b.TopPos), textAnchor, b.HeadingStyle.FontSize, b.HeadingText)
 		} else {
 			fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\">\n", textx, length(b.TopPos), textAnchor)
-			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\">%s</tspan>\n", textx, length(b.HeadingLineHeight), b.HeadingFontSize, b.HeadingText)
+			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\">%s</tspan>\n", textx, length(b.HeadingStyle.LineHeight), b.HeadingStyle.FontSize, b.HeadingText)
 			for _, line := range b.DetailTexts {
-				fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\">%s</tspan>\n", textx, length(b.DetailLineHeight), b.DetailFontSize, line)
+				fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\">%s</tspan>\n", textx, length(b.DetailStyle.LineHeight), b.DetailStyle.FontSize, line)
 			}
 			fmt.Fprintf(buf, "</text>\n")
 		}

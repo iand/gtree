@@ -2,15 +2,19 @@ package gtree
 
 import (
 	"log/slog"
-	"strings"
 )
 
+// AncestorChart represents a horizontal ancestor chart, where the root person is
+// positioned on the left, and successive generations extend to the right. Ancestors in
+// each generation are aligned vertically, visually depicting the lineage from the root
+// person to their ancestors.
 type AncestorChart struct {
 	Title string
 	Notes []string
 	Root  *AncestorPerson
 }
 
+// AncestorPerson represents an individual in the ancestor chart, including their ID, details, and their parents.
 type AncestorPerson struct {
 	ID      int
 	Details []string
@@ -18,6 +22,7 @@ type AncestorPerson struct {
 	Mother  *AncestorPerson
 }
 
+// AncestorLayoutOptions defines various layout parameters for rendering the ancestor chart.
 type AncestorLayoutOptions struct {
 	Debug bool
 
@@ -29,20 +34,15 @@ type AncestorLayoutOptions struct {
 
 	HookLength Pixel // the length of the line drawn from the parent or a child to the vertical line that joins them
 
-	TitleFontSize   Pixel // size of the font to use for the title of the chart
-	TitleLineHeight Pixel // vertical distance to use for spacing the title of the chart
+	TitleStyle   TextStyle // TitleStyle is the style of the font to use for the title of the chart.
+	NoteStyle    TextStyle // NoteStyle is the style of the font to use for the notes of the chart.
+	HeadingStyle TextStyle // HeadingStyle is the style of the font to use for the first line of each blurb.
+	DetailStyle  TextStyle // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
 
-	NoteFontSize   Pixel // size of the font to use for the notes of the chart
-	NoteLineHeight Pixel // vertical distance to use for spacing the notes of the chart
-
-	HeadingFontSize   Pixel // size of the font to use for the first line of each blurb
-	HeadingLineHeight Pixel // vertical distance to use for spacing the first line of each blurb
-
-	DetailFontSize   Pixel // size of the font to use for the subsequent lines of each blurb
-	DetailLineHeight Pixel // vertical distance to use for spacing the fsubsequent lines of each blurb
-	DetailWrapWidth  Pixel // maximum width of detail text before wrapping to a new line
+	DetailWrapWidth Pixel // DetailWrapWidth is the maximum width of detail text before wrapping to a new line.
 }
 
+// DefaultAncestorLayoutOptions returns the default layout options for rendering the ancestor chart.
 func DefaultAncestorLayoutOptions() *AncestorLayoutOptions {
 	return &AncestorLayoutOptions{
 		LineWidth:  2,
@@ -52,21 +52,28 @@ func DefaultAncestorLayoutOptions() *AncestorLayoutOptions {
 		LineGap:    8,
 		HookLength: 12,
 
-		TitleFontSize:   40,
-		TitleLineHeight: 42,
+		TitleStyle: TextStyle{
+			FontSize:   40,
+			LineHeight: 42,
+		},
+		NoteStyle: TextStyle{
+			FontSize:   20,
+			LineHeight: 22,
+		},
+		HeadingStyle: TextStyle{
+			FontSize:   20,
+			LineHeight: 22,
+		},
+		DetailStyle: TextStyle{
+			FontSize:   16,
+			LineHeight: 18,
+		},
 
-		NoteFontSize:   20,
-		NoteLineHeight: 22,
-
-		HeadingFontSize:   20,
-		HeadingLineHeight: 22,
-
-		DetailFontSize:   16,
-		DetailLineHeight: 18,
-		DetailWrapWidth:  18 * 16,
+		DetailWrapWidth: 18 * 16,
 	}
 }
 
+// Layout generates the layout for the ancestor chart based on the provided options.
 func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) *AncestorLayout {
 	if opts == nil {
 		opts = DefaultAncestorLayoutOptions()
@@ -187,7 +194,8 @@ func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) *AncestorLayout {
 	}
 
 	// Shift everything down to accomodate title
-	titleHeight, _ := l.titleDimensions()
+	titleHeight, _ := titleDimensions(l.title, l.notes, l.opts.TitleStyle, l.opts.NoteStyle)
+
 	l.height += titleHeight + l.opts.Vspace*4
 	for col := range l.grid {
 		for _, b := range l.grid[col] {
@@ -238,6 +246,7 @@ func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) *AncestorLayout {
 	return l
 }
 
+// countGenerations counts the number of generations from the root person in the ancestor chart.
 func (ch *AncestorChart) countGenerations(p *AncestorPerson) int {
 	if p.Father == nil && p.Mother == nil {
 		return 1
@@ -257,6 +266,7 @@ func (ch *AncestorChart) countGenerations(p *AncestorPerson) int {
 	return 1 + g
 }
 
+// AncestorLayout represents the layout of an ancestor chart, including dimensions and layout options.
 type AncestorLayout struct {
 	opts       AncestorLayoutOptions
 	width      Pixel
@@ -269,33 +279,37 @@ type AncestorLayout struct {
 	connectors []*Connector
 }
 
+// Width returns the width of the layout.
 func (l *AncestorLayout) Width() Pixel { return l.width }
 
+// Height returns the height of the layout.
 func (l *AncestorLayout) Height() Pixel { return l.height }
 
+// Margin returns the margin of the layout.
 func (l *AncestorLayout) Margin() Pixel { return l.opts.Margin }
 
+// Title returns the title element of the layout.
 func (l *AncestorLayout) Title() TextElement {
 	return TextElement{
-		Text:       l.title,
-		FontSize:   l.opts.TitleFontSize,
-		LineHeight: l.opts.TitleLineHeight,
+		Text:  l.title,
+		Style: l.opts.TitleStyle,
 	}
 }
 
+// Notes returns the notes elements of the layout.
 func (l *AncestorLayout) Notes() []TextElement {
 	tes := make([]TextElement, len(l.notes))
 
 	for i := range l.notes {
 		tes[i] = TextElement{
-			Text:       l.notes[i],
-			FontSize:   l.opts.NoteFontSize,
-			LineHeight: l.opts.NoteLineHeight,
+			Text:  l.notes[i],
+			Style: l.opts.NoteStyle,
 		}
 	}
 	return tes
 }
 
+// Blurbs returns all the blurbs in the layout.
 func (l *AncestorLayout) Blurbs() []*Blurb {
 	bs := make([]*Blurb, 0, len(l.blurbs))
 	for _, b := range l.blurbs {
@@ -304,12 +318,15 @@ func (l *AncestorLayout) Blurbs() []*Blurb {
 	return bs
 }
 
+// Connectors returns all the connectors in the layout.
 func (l *AncestorLayout) Connectors() []*Connector {
 	return l.connectors
 }
 
+// Debug reports whether the layout is in debug mode.
 func (l *AncestorLayout) Debug() bool { return l.opts.Debug }
 
+// addPerson adds a person and their parents to the layout at the specified column and row.
 func (l *AncestorLayout) addPerson(p *AncestorPerson, col int, row int, child *Blurb) *Blurb {
 	b := l.newBlurb(p.ID, p.Details, col, row, child)
 
@@ -332,6 +349,7 @@ func (l *AncestorLayout) addPerson(p *AncestorPerson, col int, row int, child *B
 	return b
 }
 
+// newBlurb creates a new blurb for the given person at the specified column and row.
 func (l *AncestorLayout) newBlurb(id int, texts []string, col int, row int, child *Blurb) *Blurb {
 	// texts = l.wrapTexts(texts)
 	b := &Blurb{
@@ -341,26 +359,24 @@ func (l *AncestorLayout) newBlurb(id int, texts []string, col int, row int, chil
 		AbsolutePositioning: true,
 		// Parent: parent,
 		// TopHookOffset:     l.opts.Hspace * 2,
-		SideHookOffset:    (l.opts.HeadingLineHeight * 2) / 3,
-		LeftNeighbour:     child,
-		HeadingFontSize:   l.opts.HeadingFontSize,
-		DetailFontSize:    l.opts.DetailFontSize,
-		HeadingLineHeight: l.opts.HeadingLineHeight,
-		DetailLineHeight:  l.opts.DetailLineHeight,
+		SideHookOffset: (l.opts.HeadingStyle.LineHeight * 2) / 3,
+		LeftNeighbour:  child,
+		HeadingStyle:   l.opts.HeadingStyle,
+		DetailStyle:    l.opts.DetailStyle,
 	}
 
 	if len(texts) > 0 {
 		b.HeadingText = texts[0]
-		b.Height = b.HeadingLineHeight
-		b.Width = textWidth([]rune(b.HeadingText), b.HeadingFontSize)
+		b.Height = b.HeadingStyle.LineHeight
+		b.Width = textWidth([]rune(b.HeadingText), b.HeadingStyle.FontSize)
 
 		if len(texts) > 1 {
 
-			b.DetailTexts = l.wrapDetailTexts(texts[1:])
-			b.Height += b.DetailLineHeight * Pixel(len(b.DetailTexts))
+			b.DetailTexts = wrapText(texts[1:], l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
+			b.Height += b.DetailStyle.LineHeight * Pixel(len(b.DetailTexts))
 
 			for i := range b.DetailTexts {
-				wl := textWidth([]rune(b.DetailTexts[i]), b.DetailFontSize)
+				wl := textWidth([]rune(b.DetailTexts[i]), b.DetailStyle.FontSize)
 				if wl > b.Width {
 					b.Width = wl
 				}
@@ -372,79 +388,6 @@ func (l *AncestorLayout) newBlurb(id int, texts []string, col int, row int, chil
 	l.blurbs[id] = b
 
 	return b
-}
-
-func (l *AncestorLayout) titleDimensions() (Pixel, Pixel) {
-	if l.title == "" && len(l.notes) == 0 {
-		return 0, 0
-	}
-
-	var h, w Pixel
-
-	if l.title != "" {
-		h += l.opts.TitleLineHeight
-		w = textWidth([]rune(l.title), l.opts.TitleFontSize)
-	}
-
-	if len(l.notes) != 0 {
-		h += l.opts.NoteLineHeight * Pixel(len(l.notes))
-		for i := 0; i < len(l.notes); i++ {
-			wl := textWidth([]rune(l.notes[i]), l.opts.NoteFontSize)
-			if wl > w {
-				w = wl
-			}
-		}
-	}
-
-	return h, w
-}
-
-func (l *AncestorLayout) wrapDetailTexts(texts []string) []string {
-	if len(texts) == 0 {
-		return []string{}
-	}
-	wrapped := make([]string, 0, len(texts))
-	for i := 0; i < len(texts); i++ {
-		wl := textWidth([]rune(texts[i]), l.opts.DetailFontSize)
-		if wl <= l.opts.DetailWrapWidth {
-			wrapped = append(wrapped, texts[i])
-			continue
-		}
-
-		words := strings.Fields(texts[i])
-		if len(words) == 0 {
-			wrapped = append(wrapped, "")
-			continue
-		}
-
-		// wrap the liine
-		var line string
-		for w := 0; w < len(words); w++ {
-			candidate := line
-			if len(line) != 0 {
-				candidate += " "
-			}
-			candidate += words[w]
-			wl := textWidth([]rune(candidate), l.opts.DetailFontSize)
-			if wl >= l.opts.DetailWrapWidth {
-				if len(line) == 0 {
-					// this is a single long word
-					wrapped = append(wrapped, candidate)
-					line = ""
-				} else {
-					// add current line and start a new one
-					wrapped = append(wrapped, line)
-					line = words[w]
-				}
-				continue
-			}
-
-			line = candidate
-		}
-		wrapped = append(wrapped, line)
-	}
-
-	return wrapped
 }
 
 // colPopulation returns the expected population of each column

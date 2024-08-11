@@ -1,13 +1,18 @@
 package gtree
 
+import "strings"
+
+// Pixel represents a unit of measurement used for layout dimensions, such as font sizes, margins, and positions.
 type Pixel int
 
+// TextElement represents a piece of text with a specified font size and line height, used in various layout elements.
 type TextElement struct {
-	Text       string
-	FontSize   Pixel
-	LineHeight Pixel
+	Text  string
+	Style TextStyle
 }
 
+// Layout defines an interface for chart layouts, providing methods to retrieve dimensions, text elements,
+// and layout components such as blurbs and connectors.
 type Layout interface {
 	Height() Pixel
 	Width() Pixel
@@ -19,19 +24,24 @@ type Layout interface {
 	Debug() bool
 }
 
+// Point represents a coordinate in the layout, defined by its X (horizontal) and Y (vertical) position.
 type Point struct {
 	X Pixel
 	Y Pixel
 }
 
+// Connector represents a connection between two points in the layout, typically used to draw lines between blurbs.
 type Connector struct {
 	Points []Point
 }
 
+// distance calculates the squared horizontal distance between two blurbs, used for determining layout alignment.
 func distance(a, b *Blurb) int {
 	return int((a.X() - b.X()) * (a.X() - b.X()))
 }
 
+// rightDistance calculates the squared distance between two blurbs only if the first blurb is to the left of the second.
+// This is used to enforce horizontal spacing between blurbs in the layout.
 func rightDistance(a, b *Blurb) int {
 	if a.X() > b.X() {
 		return 0
@@ -39,14 +49,15 @@ func rightDistance(a, b *Blurb) int {
 	return int((a.X() - b.X()) * (a.X() - b.X()))
 }
 
+// Blurb represents a visual element in the layout, typically used to display information about a person in a chart.
+// It includes various properties to control its positioning, text content, and relationships with other blurbs.
 type Blurb struct {
-	ID                int
-	HeadingText       string
-	HeadingFontSize   Pixel
-	HeadingLineHeight Pixel
-	DetailTexts       []string
-	DetailFontSize    Pixel
-	DetailLineHeight  Pixel
+	ID          int
+	HeadingText string
+	DetailTexts []string
+
+	HeadingStyle TextStyle // HeadingStyle is the style of the font to use for the first line of each blurb.
+	DetailStyle  TextStyle // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
 
 	// Text          []string
 	CentreText          bool  // true if the text for this blurb is better presented as centred
@@ -237,4 +248,77 @@ var runeWidths = map[rune]Pixel{
 	'|':  5,
 	'}':  10,
 	'~':  13,
+}
+
+type TextStyle struct {
+	FontSize   Pixel // FontSize is the size of the font to use for the text of each blurb.
+	LineHeight Pixel // ineHeight is the vertical distance between lines of text of the same style.
+}
+
+func wrapText(texts []string, maxWidth Pixel, fontSize Pixel) []string {
+	if len(texts) == 0 {
+		return []string{}
+	}
+	wrapped := make([]string, 0, len(texts))
+	for i := 0; i < len(texts); i++ {
+		wl := textWidth([]rune(texts[i]), fontSize)
+		if wl <= maxWidth {
+			wrapped = append(wrapped, texts[i])
+			continue
+		}
+
+		words := strings.Fields(texts[i])
+		if len(words) == 0 {
+			wrapped = append(wrapped, "")
+			continue
+		}
+
+		var line string
+		for w := 0; w < len(words); w++ {
+			candidate := line
+			if len(line) != 0 {
+				candidate += " "
+			}
+			candidate += words[w]
+			wl := textWidth([]rune(candidate), fontSize)
+			if wl >= maxWidth {
+				if len(line) == 0 {
+					wrapped = append(wrapped, candidate)
+					line = ""
+				} else {
+					wrapped = append(wrapped, line)
+					line = words[w]
+				}
+				continue
+			}
+			line = candidate
+		}
+		wrapped = append(wrapped, line)
+	}
+	return wrapped
+}
+
+func titleDimensions(title string, notes []string, titleStyle TextStyle, noteStyle TextStyle) (Pixel, Pixel) {
+	if title == "" && len(notes) == 0 {
+		return 0, 0
+	}
+
+	var h, w Pixel
+
+	if title != "" {
+		h += titleStyle.LineHeight
+		w = textWidth([]rune(title), titleStyle.FontSize)
+	}
+
+	if len(notes) != 0 {
+		h += noteStyle.LineHeight * Pixel(len(notes))
+		for i := 0; i < len(notes); i++ {
+			wl := textWidth([]rune(notes[i]), noteStyle.FontSize)
+			if wl > w {
+				w = wl
+			}
+		}
+	}
+
+	return h, w
 }

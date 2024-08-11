@@ -5,66 +5,81 @@ import (
 	"log/slog"
 	"math"
 	prand "math/rand"
-	"strings"
 )
 
+// DescendantChart represents a chart of descendants, with the earliest ancestor (root person) at the top.
+// Each successive generation is arranged in horizontal rows, with the next generation placed directly below
+// the previous one. This layout visually depicts the lineage, with descendants expanding downward from
+// the root person.
 type DescendantChart struct {
 	Title string
 	Notes []string
 	Root  *DescendantPerson
 }
 
+// DescendantPerson represents an individual in the descendant chart, including their ID, details, and families.
 type DescendantPerson struct {
 	ID       int
 	Details  []string
 	Families []*DescendantFamily
 }
 
+// DescendantFamily represents a family unit, including the spouse and their children.
 type DescendantFamily struct {
 	Other    *DescendantPerson
 	Details  []string
 	Children []*DescendantPerson
 }
 
+// LayoutOptions defines various layout parameters for rendering the descendant chart.
 type LayoutOptions struct {
-	FontSize         Pixel // size of the font to use for the main text of each blurb (first line)
-	DetailFontSize   Pixel // size of the font to use for the detail text of each blurb (subsequent lines)
-	TextLineHeight   Pixel // vertical distance between lines of text in heading of a blurb
-	DetailLineHeight Pixel // vertical distance between lines of text in detail of a blurb
-	DetailWrapWidth  Pixel // maximum width of detail text before wrapping to a new line
-	Hspace           Pixel // horizontal spacing between blurbs within the same family
-	LineWidth        Pixel
-	Margin           Pixel // margin to add to entire drawing
-	FamilyDrop       Pixel // length of line to draw down from parents to the children group line
-	ChildDrop        Pixel // the length of the line drawn from the children group line to a child
-	LineGap          Pixel // the distance to leave between a connecting line and any text
-	Debug            bool  // emit logging and debug information
-	TitleFontSize    Pixel // size of the font to use for the title of the chart
-	NoteFontSize     Pixel // size of the font to use for the notes of the chart
-	TitleLineHeight  Pixel // vertical distance to use for spacing the title of the chart
-	NoteLineHeight   Pixel // vertical distance to use for spacing the notes of the chart
+	Debug bool // Debug indicates whether to emit logging and debug information.
+
+	Hspace     Pixel // Hspace is the horizontal spacing between blurbs within the same family.
+	LineWidth  Pixel // LineWidth is the width of the lines connecting blurbs.
+	Margin     Pixel // Margin is the margin added to the entire drawing.
+	FamilyDrop Pixel // FamilyDrop is the length of the line drawn from parents to the children group line.
+	ChildDrop  Pixel // ChildDrop is the length of the line drawn from the children group line to a child.
+	LineGap    Pixel // LineGap is the distance between a connecting line and any text.
+
+	TitleStyle   TextStyle // TitleStyle is the style of the font to use for the title of the chart.
+	NoteStyle    TextStyle // NoteStyle is the style of the font to use for the notes of the chart.
+	HeadingStyle TextStyle // HeadingStyle is the style of the font to use for the first line of each blurb.
+	DetailStyle  TextStyle // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
+
+	DetailWrapWidth Pixel // DetailWrapWidth is the maximum width of detail text before wrapping to a new line.
 }
 
+// DefaultLayoutOptions returns the default layout options for rendering the descendant chart.
 func DefaultLayoutOptions() *LayoutOptions {
 	return &LayoutOptions{
-		FontSize:         20,
-		DetailFontSize:   16,
-		TitleFontSize:    40,
-		NoteFontSize:     20,
-		TextLineHeight:   22,
-		DetailLineHeight: 18,
-		TitleLineHeight:  42,
-		NoteLineHeight:   22,
-		DetailWrapWidth:  18 * 16,
-		Hspace:           16,
-		LineWidth:        2,
-		Margin:           16,
-		FamilyDrop:       48,
-		ChildDrop:        16,
-		LineGap:          8,
+		DetailWrapWidth: 18 * 16,
+		Hspace:          16,
+		LineWidth:       2,
+		Margin:          16,
+		FamilyDrop:      48,
+		ChildDrop:       16,
+		LineGap:         8,
+		TitleStyle: TextStyle{
+			FontSize:   40,
+			LineHeight: 42,
+		},
+		NoteStyle: TextStyle{
+			FontSize:   20,
+			LineHeight: 22,
+		},
+		HeadingStyle: TextStyle{
+			FontSize:   20,
+			LineHeight: 22,
+		},
+		DetailStyle: TextStyle{
+			FontSize:   16,
+			LineHeight: 18,
+		},
 	}
 }
 
+// Layout generates the layout for the descendant chart based on the provided options.
 func (ch *DescendantChart) Layout(opts *LayoutOptions) *DescendantLayout {
 	if opts == nil {
 		opts = DefaultLayoutOptions()
@@ -84,6 +99,7 @@ func (ch *DescendantChart) Layout(opts *LayoutOptions) *DescendantLayout {
 	return l
 }
 
+// DescendantLayout represents the layout of a descendant chart, including dimensions and layout options.
 type DescendantLayout struct {
 	title          string
 	notes          []string
@@ -98,33 +114,37 @@ type DescendantLayout struct {
 	rows       [][]*Blurb
 }
 
+// Width returns the width of the layout.
 func (l *DescendantLayout) Width() Pixel { return l.width }
 
+// Height returns the height of the layout.
 func (l *DescendantLayout) Height() Pixel { return l.height }
 
+// Margin returns the margin of the layout.
 func (l *DescendantLayout) Margin() Pixel { return l.opts.Margin }
 
+// Title returns the title element of the layout.
 func (l *DescendantLayout) Title() TextElement {
 	return TextElement{
-		Text:       l.title,
-		FontSize:   l.opts.TitleFontSize,
-		LineHeight: l.opts.TitleLineHeight,
+		Text:  l.title,
+		Style: l.opts.TitleStyle,
 	}
 }
 
+// Notes returns the notes elements of the layout.
 func (l *DescendantLayout) Notes() []TextElement {
 	tes := make([]TextElement, len(l.notes))
 
 	for i := range l.notes {
 		tes[i] = TextElement{
-			Text:       l.notes[i],
-			FontSize:   l.opts.NoteFontSize,
-			LineHeight: l.opts.NoteLineHeight,
+			Text:  l.notes[i],
+			Style: l.opts.NoteStyle,
 		}
 	}
 	return tes
 }
 
+// Blurbs returns all the blurbs in the layout.
 func (l *DescendantLayout) Blurbs() []*Blurb {
 	bs := make([]*Blurb, 0, len(l.blurbs))
 	for _, b := range l.blurbs {
@@ -133,12 +153,15 @@ func (l *DescendantLayout) Blurbs() []*Blurb {
 	return bs
 }
 
+// Connectors returns all the connectors in the layout.
 func (l *DescendantLayout) Connectors() []*Connector {
 	return l.connectors
 }
 
+// Debug reports whether the layout is in debug mode.
 func (l *DescendantLayout) Debug() bool { return l.opts.Debug }
 
+// addPerson adds a person and their family to the layout at the specified row.
 func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb) *Blurb {
 	b := l.newBlurb(p.ID, p.Details, row, parent)
 
@@ -223,31 +246,30 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 	return b
 }
 
+// newBlurb creates a new blurb for the given person or family at the specified row.
 func (l *DescendantLayout) newBlurb(id int, texts []string, row int, parent *Blurb) *Blurb {
-	texts = l.wrapTexts(texts)
+	texts = wrapText(texts, l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
 	b := &Blurb{
 		ID: id,
 		// Text:              texts,
-		Row:               row,
-		Parent:            parent,
-		TopHookOffset:     l.opts.Hspace * 2,
-		SideHookOffset:    l.opts.TextLineHeight / 2,
-		HeadingFontSize:   l.opts.FontSize,
-		DetailFontSize:    l.opts.DetailFontSize,
-		HeadingLineHeight: l.opts.TextLineHeight,
-		DetailLineHeight:  l.opts.DetailLineHeight,
+		Row:            row,
+		Parent:         parent,
+		TopHookOffset:  l.opts.Hspace * 2,
+		SideHookOffset: l.opts.HeadingStyle.LineHeight / 2,
+		HeadingStyle:   l.opts.HeadingStyle,
+		DetailStyle:    l.opts.DetailStyle,
 	}
 	if len(texts) > 0 {
 		b.HeadingText = texts[0]
-		b.Height = b.HeadingLineHeight
-		b.Width = textWidth([]rune(b.HeadingText), b.HeadingFontSize)
+		b.Height = b.HeadingStyle.LineHeight
+		b.Width = textWidth([]rune(b.HeadingText), b.HeadingStyle.FontSize)
 
 		if len(texts) > 1 {
 			b.DetailTexts = texts[1:]
-			b.Height += b.DetailLineHeight * Pixel(len(b.DetailTexts))
+			b.Height += b.DetailStyle.LineHeight * Pixel(len(b.DetailTexts))
 
 			for i := range b.DetailTexts {
-				wl := textWidth([]rune(b.DetailTexts[i]), b.DetailFontSize)
+				wl := textWidth([]rune(b.DetailTexts[i]), b.DetailStyle.FontSize)
 				if wl > b.Width {
 					b.Width = wl
 				}
@@ -265,56 +287,7 @@ func (l *DescendantLayout) newBlurb(id int, texts []string, row int, parent *Blu
 	return b
 }
 
-func (l *DescendantLayout) wrapTexts(texts []string) []string {
-	if len(texts) == 0 {
-		return []string{}
-	}
-	wrapped := make([]string, 0, len(texts))
-	wrapped = append(wrapped, texts[0])
-
-	for i := 1; i < len(texts); i++ {
-		wl := textWidth([]rune(texts[i]), l.opts.DetailFontSize)
-		if wl <= l.opts.DetailWrapWidth {
-			wrapped = append(wrapped, texts[i])
-			continue
-		}
-
-		words := strings.Fields(texts[i])
-		if len(words) == 0 {
-			wrapped = append(wrapped, "")
-			continue
-		}
-
-		// wrap the liine
-		var line string
-		for w := 0; w < len(words); w++ {
-			candidate := line
-			if len(line) != 0 {
-				candidate += " "
-			}
-			candidate += words[w]
-			wl := textWidth([]rune(candidate), l.opts.DetailFontSize)
-			if wl >= l.opts.DetailWrapWidth {
-				if len(line) == 0 {
-					// this is a single long word
-					wrapped = append(wrapped, candidate)
-					line = ""
-				} else {
-					// add current line and start a new one
-					wrapped = append(wrapped, line)
-					line = words[w]
-				}
-				continue
-			}
-
-			line = candidate
-		}
-		wrapped = append(wrapped, line)
-	}
-
-	return wrapped
-}
-
+// align aligns the blurbs and rows in the layout, ensuring proper spacing.
 func (l *DescendantLayout) align() {
 	// spread rows evenly
 	top := Pixel(0)
@@ -353,6 +326,7 @@ func (l *DescendantLayout) align() {
 	}
 }
 
+// jiggle randomly shifts a blurb in the layout, returning a function to undo the shift.
 func (l *DescendantLayout) jiggle() func() {
 	// pick a blurb at random
 
@@ -375,6 +349,7 @@ func (l *DescendantLayout) jiggle() func() {
 	return func() { b.LeftShift = savedShift }
 }
 
+// reflow adjusts the layout using simulated annealing to optimise the fitness of the layout.
 func (l *DescendantLayout) reflow() {
 	iters := 30000
 	temp := float64(iters) * 10
@@ -423,6 +398,7 @@ func (l *DescendantLayout) reflow() {
 	}
 }
 
+// centreBlurbs centres the blurbs within the layout.
 func (l *DescendantLayout) centreBlurbs() {
 	var minX, maxX, minY, maxY Pixel
 	initialized := false
@@ -450,7 +426,7 @@ func (l *DescendantLayout) centreBlurbs() {
 	minY -= l.opts.Margin
 	maxY += l.opts.Margin
 
-	th, _ := l.titleDimensions()
+	th, _ := titleDimensions(l.title, l.notes, l.opts.TitleStyle, l.opts.NoteStyle)
 	minY -= th
 
 	for _, bs := range l.rows {
@@ -466,31 +442,7 @@ func (l *DescendantLayout) centreBlurbs() {
 	l.height = maxY - minY
 }
 
-func (l *DescendantLayout) titleDimensions() (Pixel, Pixel) {
-	if l.title == "" && len(l.notes) == 0 {
-		return 0, 0
-	}
-
-	var h, w Pixel
-
-	if l.title != "" {
-		h += l.opts.TitleLineHeight
-		w = textWidth([]rune(l.title), l.opts.TitleFontSize)
-	}
-
-	if len(l.notes) != 0 {
-		h += l.opts.NoteLineHeight * Pixel(len(l.notes))
-		for i := 0; i < len(l.notes); i++ {
-			wl := textWidth([]rune(l.notes[i]), l.opts.NoteFontSize)
-			if wl > w {
-				w = wl
-			}
-		}
-	}
-
-	return h, w
-}
-
+// fitness calculates the fitness of the layout, used for layout optimisation.
 func (l *DescendantLayout) fitness() int {
 	total := 0
 	for _, b := range l.blurbs {
