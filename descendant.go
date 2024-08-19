@@ -33,7 +33,8 @@ type DescendantFamily struct {
 
 // LayoutOptions defines various layout parameters for rendering the descendant chart.
 type LayoutOptions struct {
-	Debug bool // Debug indicates whether to emit logging and debug information.
+	Debug      bool // Debug indicates whether to emit logging and debug information.
+	Iterations int  // Number of iterations of adjustment to run
 
 	Hspace     Pixel // Hspace is the horizontal spacing between blurbs within the same family.
 	LineWidth  Pixel // LineWidth is the width of the lines connecting blurbs.
@@ -53,6 +54,7 @@ type LayoutOptions struct {
 // DefaultLayoutOptions returns the default layout options for rendering the descendant chart.
 func DefaultLayoutOptions() *LayoutOptions {
 	return &LayoutOptions{
+		Iterations:      30000,
 		DetailWrapWidth: 18 * 16,
 		Hspace:          16,
 		LineWidth:       2,
@@ -175,39 +177,63 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 		}
 		relDetails := []string{relText}
 		relDetails = append(relDetails, p.Families[fi].Details...)
-		rel := l.newBlurb(-p.Families[fi].Other.ID, relDetails, row, nil)
-		rel.CentreText = true
 
-		// Attempt to keep with spouse relation marker
-		b.KeepWith = append(b.KeepWith, rel)
-		rel.KeepWith = append(rel.KeepWith, b)
+		var rel, sp *Blurb
+		var famCentre *Blurb
+		var famRightmost *Blurb
+		if p.Families[fi].Other != nil {
+			rel = l.newBlurb(-p.Families[fi].Other.ID, relDetails, row, nil)
+			rel.CentreText = true
+			famCentre = rel
 
-		sp := l.addPerson(p.Families[fi].Other, row, nil)
-		sp.NoShift = true
+			// Attempt to keep with spouse relation marker
+			b.KeepWith = append(b.KeepWith, rel)
+			rel.KeepWith = append(rel.KeepWith, b)
 
-		sp.KeepWith = append(sp.KeepWith, rel)
-		rel.KeepWith = append(rel.KeepWith, sp)
+			sp = l.addPerson(p.Families[fi].Other, row, nil)
+			sp.NoShift = true
+
+			sp.KeepWith = append(sp.KeepWith, rel)
+			rel.KeepWith = append(rel.KeepWith, sp)
+			famRightmost = sp
+		} else {
+			famCentre = b
+			famRightmost = b
+		}
 
 		if len(p.Families[fi].Children) > 0 {
-			prevSpouseWithChildren = sp
+			prevSpouseWithChildren = famRightmost
 			if lastChildOfPrevFamily != nil {
 				// Attempt to keep relation marker right of last child in previous family to avoid merging of descent lines
-				rel.KeepRightOf = append(rel.KeepRightOf, lastChildOfPrevFamily)
+				famCentre.KeepRightOf = append(famCentre.KeepRightOf, lastChildOfPrevFamily)
 			}
 
 		}
 
 		var prevChild *Blurb
 		for ci := range p.Families[fi].Children {
-			c := l.addPerson(p.Families[fi].Children[ci], row+1, rel)
+			c := l.addPerson(p.Families[fi].Children[ci], row+1, famCentre)
+			if ci == 0 {
+				b.FirstChild = c
+			}
+			if ci == len(p.Families[fi].Children)-1 {
+				b.LastChild = c
+			}
 
-			// Attempt to keep with relation marker
-			c.KeepWith = append(c.KeepWith, rel)
-			rel.KeepWith = append(rel.KeepWith, c)
+			if rel != nil {
+				// Attempt to keep with relation marker
+				c.KeepWith = append(c.KeepWith, rel)
+				rel.KeepWith = append(rel.KeepWith, c)
 
-			// Attempt to keep relation marker right of first child if there are multiple childen
-			if ci == 0 && len(p.Families[fi].Children) > 1 {
-				rel.KeepRightOf = append(rel.KeepRightOf, c)
+				// Attempt to keep relation marker right of first child if there are multiple childen
+				if ci == 0 && len(p.Families[fi].Children) > 1 {
+					rel.KeepRightOf = append(rel.KeepRightOf, c)
+				}
+			} else {
+				// Attempt to keep with parent
+				c.KeepWith = append(c.KeepWith, b)
+				b.KeepWith = append(b.KeepWith, c)
+
 			}
 
 			if prevChild != nil {
@@ -217,18 +243,20 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 			prevChild = c
 
 			// Attempt to keep with grandparent marker, to encourage tree to look centred
-			if parent != nil {
-				c.KeepWith = append(c.KeepWith, parent)
-				parent.KeepWith = append(parent.KeepWith, c)
-			}
+			// if parent != nil {
+			// 	c.KeepWith = append(c.KeepWith, parent)
+			// 	parent.KeepWith = append(parent.KeepWith, c)
+			// }
 
 			if b.LeftStop == nil {
 				b.LeftStop = c
 			}
 			b.RightStop = c
 
-			if sp.LeftStop == nil {
+			if sp != nil && sp.LeftStop == nil {
 				sp.LeftStop = c
+			}
+			if rel != nil && rel.LeftStop == nil {
 				rel.LeftStop = c
 			}
 
@@ -301,7 +329,10 @@ func (l *DescendantLayout) align() {
 
 				// add a little more padding if neighbours have parents that are different
 				if bs[i].ID > 0 && (bs[i].Parent != nil || bs[i-1].Parent != nil) && (bs[i].Parent != bs[i-1].Parent) {
-					bs[i].LeftPad += l.opts.Hspace
+					bs[i].LeftPad += l.opts.Hspace * 2
+					if bs[i-1].Parent != nil {
+						bs[i].KeepRightOf = append(bs[i].KeepRightOf, bs[i-1].Parent)
+					}
 				}
 			}
 
@@ -351,9 +382,8 @@ func (l *DescendantLayout) jiggle() func() {
 
 // reflow adjusts the layout using simulated annealing to optimise the fitness of the layout.
 func (l *DescendantLayout) reflow() {
-	iters := 30000
-	temp := float64(iters) * 10
-	for i := 0; i < iters; i++ {
+	temp := float64(l.opts.Iterations) * 10
+	for i := 0; i < l.opts.Iterations; i++ {
 		fitnessBefore := l.fitness()
 		undo := l.jiggle()
 		fitnessAfter := l.fitness()

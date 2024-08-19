@@ -79,6 +79,9 @@ type Blurb struct {
 	RightStop           *Blurb // the blurb whose center must not be passed when shifting right
 	TopHookOffset       Pixel  // TopHookOffset is the offset from the left of the blurb where any dropped connecting line should finish (ensures it is within the bounds of the name, even if subsequent detail lines are longer)
 	SideHookOffset      Pixel  // SideHookOffset is the offset from the top of the blurb where any connecting line should finish
+
+	FirstChild *Blurb
+	LastChild  *Blurb
 }
 
 // X returns the horizontal position of the centre of the Blurb
