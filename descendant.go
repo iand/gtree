@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"math"
 	prand "math/rand"
+	"os"
 )
 
 // DescendantChart represents a chart of descendants, with the earliest ancestor (root person) at the top.
@@ -20,6 +21,7 @@ type DescendantChart struct {
 // DescendantPerson represents an individual in the descendant chart, including their ID, details, and families.
 type DescendantPerson struct {
 	ID       int
+	Headings []string
 	Details  []string
 	Families []*DescendantFamily
 }
@@ -95,8 +97,9 @@ func (ch *DescendantChart) Layout(opts *LayoutOptions) *DescendantLayout {
 	l.generationDrop = l.opts.LineWidth + l.opts.LineGap + l.opts.LineGap + l.opts.ChildDrop + l.opts.FamilyDrop
 
 	l.addPerson(ch.Root, 0, nil)
-	l.align()
-	l.reflow()
+
+	a := new(SpreadingDescendantArranger)
+	a.Arrange(l)
 
 	return l
 }
@@ -165,7 +168,7 @@ func (l *DescendantLayout) Debug() bool { return l.opts.Debug }
 
 // addPerson adds a person and their family to the layout at the specified row.
 func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb) *Blurb {
-	b := l.newBlurb(p.ID, p.Details, row, parent)
+	b := l.newBlurb(p.ID, p.Headings, p.Details, row, parent)
 
 	var prevSpouseWithChildren *Blurb
 	var lastChildOfPrevFamily *Blurb
@@ -182,7 +185,7 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 		var famCentre *Blurb
 		var famRightmost *Blurb
 		if p.Families[fi].Other != nil {
-			rel = l.newBlurb(-p.Families[fi].Other.ID, relDetails, row, nil)
+			rel = l.newBlurb(-p.Families[fi].Other.ID, []string{}, relDetails, row, nil)
 			rel.CentreText = true
 			famCentre = rel
 
@@ -275,7 +278,7 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 }
 
 // newBlurb creates a new blurb for the given person or family at the specified row.
-func (l *DescendantLayout) newBlurb(id int, texts []string, row int, parent *Blurb) *Blurb {
+func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, row int, parent *Blurb) *Blurb {
 	texts = wrapText(texts, l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
 	b := &Blurb{
 		ID: id,
@@ -287,24 +290,34 @@ func (l *DescendantLayout) newBlurb(id int, texts []string, row int, parent *Blu
 		HeadingStyle:   l.opts.HeadingStyle,
 		DetailStyle:    l.opts.DetailStyle,
 	}
-	if len(texts) > 0 {
-		b.HeadingText = texts[0]
+
+	if len(headings) > 0 {
+		b.HeadingTexts = headings
+		b.Height = b.HeadingStyle.LineHeight * Pixel(len(b.HeadingTexts))
+	} else {
+		b.HeadingTexts = append(b.HeadingTexts, texts[0])
 		b.Height = b.HeadingStyle.LineHeight
-		b.Width = textWidth([]rune(b.HeadingText), b.HeadingStyle.FontSize)
-
-		if len(texts) > 1 {
-			b.DetailTexts = texts[1:]
-			b.Height += b.DetailStyle.LineHeight * Pixel(len(b.DetailTexts))
-
-			for i := range b.DetailTexts {
-				wl := textWidth([]rune(b.DetailTexts[i]), b.DetailStyle.FontSize)
-				if wl > b.Width {
-					b.Width = wl
-				}
-			}
-		}
-
+		texts = texts[1:]
 	}
+
+	if len(texts) > 0 {
+		b.DetailTexts = texts
+		b.Height += b.DetailStyle.LineHeight * Pixel(len(b.DetailTexts))
+	}
+
+	for i := range b.HeadingTexts {
+		wl := textWidth([]rune(b.HeadingTexts[i]), b.HeadingStyle.FontSize)
+		if wl > b.Width {
+			b.Width = wl
+		}
+	}
+	for i := range b.DetailTexts {
+		wl := textWidth([]rune(b.DetailTexts[i]), b.DetailStyle.FontSize)
+		if wl > b.Width {
+			b.Width = wl
+		}
+	}
+
 	l.blurbs[id] = b
 
 	for len(l.rows) <= row {
@@ -315,8 +328,15 @@ func (l *DescendantLayout) newBlurb(id int, texts []string, row int, parent *Blu
 	return b
 }
 
+type IteratedDescendantArranger struct{}
+
+func (a *IteratedDescendantArranger) Arrange(l *DescendantLayout) {
+	a.align(l)
+	a.reflow(l)
+}
+
 // align aligns the blurbs and rows in the layout, ensuring proper spacing.
-func (l *DescendantLayout) align() {
+func (a *IteratedDescendantArranger) align(l *DescendantLayout) {
 	// spread rows evenly
 	top := Pixel(0)
 	for _, bs := range l.rows {
@@ -358,7 +378,7 @@ func (l *DescendantLayout) align() {
 }
 
 // jiggle randomly shifts a blurb in the layout, returning a function to undo the shift.
-func (l *DescendantLayout) jiggle() func() {
+func (a *IteratedDescendantArranger) jiggle(l *DescendantLayout) func() {
 	// pick a blurb at random
 
 	var b *Blurb
@@ -381,12 +401,12 @@ func (l *DescendantLayout) jiggle() func() {
 }
 
 // reflow adjusts the layout using simulated annealing to optimise the fitness of the layout.
-func (l *DescendantLayout) reflow() {
+func (a *IteratedDescendantArranger) reflow(l *DescendantLayout) {
 	temp := float64(l.opts.Iterations) * 10
 	for i := 0; i < l.opts.Iterations; i++ {
-		fitnessBefore := l.fitness()
-		undo := l.jiggle()
-		fitnessAfter := l.fitness()
+		fitnessBefore := a.fitness(l)
+		undo := a.jiggle(l)
+		fitnessAfter := a.fitness(l)
 
 		// keep this change if the new fitness is lower
 		diff := fitnessAfter - fitnessBefore
@@ -406,7 +426,7 @@ func (l *DescendantLayout) reflow() {
 
 	}
 
-	l.centreBlurbs()
+	a.centreBlurbs(l)
 
 	// This is top-down layout
 	l.connectors = []*Connector{}
@@ -429,7 +449,7 @@ func (l *DescendantLayout) reflow() {
 }
 
 // centreBlurbs centres the blurbs within the layout.
-func (l *DescendantLayout) centreBlurbs() {
+func (a *IteratedDescendantArranger) centreBlurbs(l *DescendantLayout) {
 	var minX, maxX, minY, maxY Pixel
 	initialized := false
 
@@ -473,7 +493,7 @@ func (l *DescendantLayout) centreBlurbs() {
 }
 
 // fitness calculates the fitness of the layout, used for layout optimisation.
-func (l *DescendantLayout) fitness() int {
+func (a *IteratedDescendantArranger) fitness(l *DescendantLayout) int {
 	total := 0
 	for _, b := range l.blurbs {
 		for _, kw := range b.KeepWith {
@@ -485,4 +505,183 @@ func (l *DescendantLayout) fitness() int {
 	}
 
 	return total
+}
+
+type SpreadingDescendantArranger struct{}
+
+func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
+	// spread rows vertically
+	top := Pixel(0)
+	for _, bs := range l.rows {
+		rowHeight := Pixel(0)
+		for i := range bs {
+			bs[i].AbsolutePositioning = true
+			bs[i].TopPos = top
+			if i > 0 {
+				bs[i].LeftNeighbour = bs[i-1]
+			}
+			rowHeight = max(rowHeight, bs[i].Height)
+		}
+		top += rowHeight + l.generationDrop
+	}
+
+	// spread blurbs in last row evenly
+	left := Pixel(0)
+	bs := l.rows[len(l.rows)-1]
+	for i := range bs {
+		if i > 0 {
+			left += l.opts.Hspace
+			if bs[i].Parent != bs[i-1].Parent {
+				// extra space between families
+				left += l.opts.Hspace * 2
+			}
+		}
+		bs[i].LeftPos = left
+		left += bs[i].Width
+	}
+
+	if len(l.rows) == 1 {
+		return
+	}
+
+	// work up from bottom row spreading out blurbs so subtrees don't overlap
+	for row := len(l.rows) - 2; row >= 0; row-- {
+		minLeft := Pixel(0)
+		bs := l.rows[row]
+		for i := range bs {
+			if i > 0 {
+				minLeft += l.opts.Hspace
+				if bs[i].Parent != bs[i-1].Parent {
+					// extra space between families
+					minLeft += l.opts.Hspace * 2
+				}
+			}
+			if bs[i].FirstChild != nil {
+				// centre over children
+				w := bs[i].LastChild.Right() - bs[i].FirstChild.Left()
+
+				// This is centre point over children
+				x := bs[i].FirstChild.Left() + w/2
+
+				// adjust to the left side of the blurb
+				x -= bs[i].Width / 2
+
+				if x < minLeft {
+					for j := i; j < len(bs); j++ {
+						a.shiftChildren(l, row+1, bs[j], minLeft-x)
+					}
+				} else {
+					minLeft = x
+				}
+
+			}
+
+			bs[i].LeftPos = minLeft
+			minLeft += bs[i].Width
+
+		}
+	}
+
+	// close up gaps by pulling across any early siblings that don't have children
+	for row := range l.rows {
+		bs := l.rows[row]
+		for i := len(bs) - 1; i >= 1; i-- {
+			if bs[i-1].FirstChild == nil && bs[i].Parent != nil && bs[i-1].Parent != nil && bs[i].Parent == bs[i-1].Parent && bs[i].Left()-bs[i-1].Right() > l.opts.Hspace {
+				bs[i-1].LeftPos = bs[i].Left() - l.opts.Hspace - bs[i-1].Width
+			}
+		}
+	}
+
+	a.centreBlurbs(l)
+
+	// This is top-down layout
+	l.connectors = []*Connector{}
+	for _, b := range l.blurbs {
+		if b.Parent != nil {
+			if b.Parent.ID > 0 && b.Parent.FirstChild == b.Parent.LastChild {
+				l.connectors = append(l.connectors, &Connector{
+					Points: []Point{
+						// Start just above blurb
+						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
+						// Move up to parent
+						{X: b.TopHookX(), Y: b.Parent.Bottom() + l.opts.LineGap},
+					},
+				})
+			} else {
+				l.connectors = append(l.connectors, &Connector{
+					Points: []Point{
+						// Start just above blurb
+						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
+						// Move up by ChildDrop
+						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
+						// Move horizontally to centre of parent
+						{X: b.Parent.X(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
+						// Move up to centre of parent
+						{X: b.Parent.X(), Y: b.Parent.Bottom() + l.opts.LineGap},
+					},
+				})
+			}
+		}
+	}
+}
+
+func (a *SpreadingDescendantArranger) shiftChildren(l *DescendantLayout, row int, parent *Blurb, shift Pixel) {
+	if parent.FirstChild == nil || row > len(l.rows)-1 {
+		return
+	}
+	bs := l.rows[row]
+	for i := range bs {
+		if bs[i].Parent == parent {
+			bs[i].LeftPos += shift
+			a.shiftChildren(l, row+1, bs[i], shift)
+		}
+	}
+}
+
+// centreBlurbs centres the blurbs within the layout.
+func (a *SpreadingDescendantArranger) centreBlurbs(l *DescendantLayout) {
+	var minX, maxX, minY, maxY Pixel
+	initialized := false
+
+	for _, b := range l.blurbs {
+		if l.opts.Debug {
+			slog.Info("blurb position", "l", b.Left(), "r", b.Right(), "t", b.TopPos, "b", b.Bottom())
+		}
+		if !initialized {
+			minX = b.Left()
+			maxX = b.Right()
+			minY = b.TopPos
+			maxY = b.Bottom()
+			initialized = true
+			continue
+		}
+		minX = min(minX, b.Left())
+		maxX = max(maxX, b.Right())
+		minY = min(minY, b.TopPos)
+		maxY = max(maxY, b.Bottom())
+	}
+
+	minX -= l.opts.Margin
+	maxX += l.opts.Margin
+	minY -= l.opts.Margin
+	maxY += l.opts.Margin
+
+	th, _ := titleDimensions(l.title, l.notes, l.opts.TitleStyle, l.opts.NoteStyle)
+	minY -= th
+
+	for _, bs := range l.rows {
+		for i := range bs {
+			if i == 0 {
+				bs[i].LeftPad -= minX
+			}
+			bs[i].TopPos -= minY
+		}
+	}
+
+	l.width = maxX - minX
+	l.height = maxY - minY
+}
+
+func log(vs ...any) {
+	fmt.Fprintln(os.Stderr, vs...)
 }

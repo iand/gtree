@@ -20,9 +20,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
 				},
+				Details: []string{},
 			},
 		},
 	},
@@ -31,8 +32,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"b. 24 May 1819, London, England.",
 					"d. 22 Jan 1901, Isle of Wight, England.",
 				},
@@ -44,8 +47,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"b. 24 May 1819, London, England.",
 				},
 			},
@@ -56,8 +61,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901",
 				},
 			},
@@ -68,8 +75,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901",
 					"carpenter",
 				},
@@ -81,8 +90,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901 (carpenter)",
 				},
 			},
@@ -93,8 +104,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"(1819-1901 carpenter",
 				},
 			},
@@ -106,8 +119,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901 (carpenter",
 				},
 			},
@@ -119,8 +134,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"b. 24 May 1819",
 				},
 			},
@@ -131,7 +148,8 @@ var testCases = []struct {
 		in:   "1. (b. 24 May 1819)",
 		want: &DescendantChart{
 			Root: &DescendantPerson{
-				ID: 1,
+				ID:       1,
+				Headings: []string{},
 				Details: []string{
 					"b. 24 May 1819",
 				},
@@ -143,7 +161,8 @@ var testCases = []struct {
 		in:   "1.b. 24 May 1819",
 		want: &DescendantChart{
 			Root: &DescendantPerson{
-				ID: 1,
+				ID:       1,
+				Headings: []string{},
 				Details: []string{
 					"b. 24 May 1819",
 				},
@@ -157,8 +176,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"Henry Johnson",
+				},
+				Details: []string{
 					"b: Abt. 1806 in Kilford, Ireland. d: 17 Sep 1861 in Swindon, Wiltshire, England",
 					"age: 55.",
 				},
@@ -172,8 +193,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"Bennett, Edward",
+				},
+				Details: []string{
 					"(b. 1843-11-01 - St. David's, Carmarthenshire, Wales, d. before 1871), m. 1867-12-07 - St. Andrew's Catholic Church, High Street, Swansea, Glamorgan, Wales",
 				},
 			},
@@ -188,16 +211,20 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901",
 				},
 				Families: []*DescendantFamily{
 					{
 						Other: &DescendantPerson{
 							ID: 2,
-							Details: []string{
+							Headings: []string{
 								"B. Green",
+							},
+							Details: []string{
 								"1819-1861",
 							},
 						},
@@ -214,16 +241,20 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901",
 				},
 				Families: []*DescendantFamily{
 					{
 						Other: &DescendantPerson{
 							ID: 2,
-							Details: []string{
+							Headings: []string{
 								"B. Green",
+							},
+							Details: []string{
 								"1819-1861",
 							},
 						},
@@ -243,31 +274,39 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901",
 				},
 				Families: []*DescendantFamily{
 					{
 						Other: &DescendantPerson{
 							ID: 2,
-							Details: []string{
+							Headings: []string{
 								"B. Green",
+							},
+							Details: []string{
 								"1819-1861",
 							},
 						},
 						Children: []*DescendantPerson{
 							{
 								ID: 3,
-								Details: []string{
+								Headings: []string{
 									"C. Brown",
+								},
+								Details: []string{
 									"1840-1901",
 								},
 							},
 							{
 								ID: 4,
-								Details: []string{
+								Headings: []string{
 									"D. Brown",
+								},
+								Details: []string{
 									"1841-1910",
 								},
 							},
@@ -289,24 +328,30 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901",
 				},
 				Families: []*DescendantFamily{
 					{
 						Other: &DescendantPerson{
 							ID: 2,
-							Details: []string{
+							Headings: []string{
 								"B. Green",
+							},
+							Details: []string{
 								"1819-1861",
 							},
 						},
 						Children: []*DescendantPerson{
 							{
 								ID: 3,
-								Details: []string{
+								Headings: []string{
 									"C. Brown",
+								},
+								Details: []string{
 									"1840-1901",
 								},
 							},
@@ -315,16 +360,20 @@ var testCases = []struct {
 					{
 						Other: &DescendantPerson{
 							ID: 4,
-							Details: []string{
+							Headings: []string{
 								"E. Violet",
+							},
+							Details: []string{
 								"1825-1920",
 							},
 						},
 						Children: []*DescendantPerson{
 							{
 								ID: 5,
-								Details: []string{
+								Headings: []string{
 									"D. Brown",
+								},
+								Details: []string{
 									"1850-1940",
 								},
 							},
@@ -345,16 +394,20 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901",
 				},
 				Families: []*DescendantFamily{
 					{
 						Other: &DescendantPerson{
 							ID: 2,
-							Details: []string{
+							Headings: []string{
 								"B. Green",
+							},
+							Details: []string{
 								"1819-1861",
 							},
 						},
@@ -362,16 +415,20 @@ var testCases = []struct {
 					{
 						Other: &DescendantPerson{
 							ID: 3,
-							Details: []string{
+							Headings: []string{
 								"E. Violet",
+							},
+							Details: []string{
 								"1825-1920",
 							},
 						},
 						Children: []*DescendantPerson{
 							{
 								ID: 4,
-								Details: []string{
+								Headings: []string{
 									"D. Brown",
+								},
+								Details: []string{
 									"1850-1940",
 								},
 							},
@@ -393,8 +450,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"A. Brown",
+				},
+				Details: []string{
 					"1819-1901",
 				},
 				Families: []*DescendantFamily{
@@ -402,15 +461,19 @@ var testCases = []struct {
 						Children: []*DescendantPerson{
 							{
 								ID: 2,
-								Details: []string{
+								Headings: []string{
 									"C. Brown",
+								},
+								Details: []string{
 									"1840-1901",
 								},
 							},
 							{
 								ID: 3,
-								Details: []string{
+								Headings: []string{
 									"D. Brown",
+								},
+								Details: []string{
 									"1850-1940",
 								},
 							},
@@ -419,8 +482,10 @@ var testCases = []struct {
 					{
 						Other: &DescendantPerson{
 							ID: 4,
-							Details: []string{
+							Headings: []string{
 								"B. Green",
+							},
+							Details: []string{
 								"1819-1861",
 							},
 						},
@@ -428,8 +493,10 @@ var testCases = []struct {
 					{
 						Other: &DescendantPerson{
 							ID: 5,
-							Details: []string{
+							Headings: []string{
 								"E. Violet",
+							},
+							Details: []string{
 								"1825-1920",
 							},
 						},
@@ -451,8 +518,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
-				Details: []string{
+				Headings: []string{
 					"John Doe",
+				},
+				Details: []string{
 					"b. 1950",
 				},
 				Families: []*DescendantFamily{
@@ -460,24 +529,30 @@ var testCases = []struct {
 						Children: []*DescendantPerson{
 							{
 								ID: 2,
-								Details: []string{
+								Headings: []string{
 									"Jane Doe",
+								},
+								Details: []string{
 									"b. 1975",
 								},
 								Families: []*DescendantFamily{
 									{
 										Other: &DescendantPerson{
 											ID: 3,
-											Details: []string{
+											Headings: []string{
 												"Richard Roe",
+											},
+											Details: []string{
 												"b. 1974",
 											},
 										},
 										Children: []*DescendantPerson{
 											{
 												ID: 4,
-												Details: []string{
+												Headings: []string{
 													"Sam Roe",
+												},
+												Details: []string{
 													"b. 2000",
 												},
 											},
@@ -487,8 +562,10 @@ var testCases = []struct {
 							},
 							{
 								ID: 5,
-								Details: []string{
+								Headings: []string{
 									"Jim Doe",
+								},
+								Details: []string{
 									"b. 1978",
 								},
 							},
@@ -530,8 +607,10 @@ var testCases = []struct {
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: int(1),
-				Details: []string{
+				Headings: []string{
 					string("Henry Johnson"),
+				},
+				Details: []string{
 					string("b: Abt. 1806 in Kilford, Ireland. d: 17 Sep 1861 in Swindon, Wiltshire, England"),
 					string("age: 55."),
 				},
@@ -539,8 +618,10 @@ var testCases = []struct {
 					{
 						Other: &DescendantPerson{
 							ID: int(2),
-							Details: []string{
+							Headings: []string{
 								string("Alice O’Connor"),
+							},
+							Details: []string{
 								string("b: Abt. 1800 in Limerick, Ireland. d: 12 Oct 1896 in Trowbridge, Wiltshire, England"),
 								string("age: 96."),
 							},
@@ -550,8 +631,10 @@ var testCases = []struct {
 						Children: []*DescendantPerson{
 							{
 								ID: int(3),
-								Details: []string{
+								Headings: []string{
 									string("Elizabeth Johnson"),
+								},
+								Details: []string{
 									string("b: 7 Dec 1838 in Chippenham, Wiltshire, England. d: Bef. 1928 in Swindon, Wiltshire, England"),
 									string("age: 89."),
 								},
@@ -559,8 +642,10 @@ var testCases = []struct {
 									{
 										Other: &DescendantPerson{
 											ID: int(4),
-											Details: []string{
+											Headings: []string{
 												string("George Martin"),
+											},
+											Details: []string{
 												string("b: abt 1835 in Ireland. m: 28 Jun 1857 in Swindon, Wiltshire, England. d: Mar 1883 in Swindon, Wiltshire, England"),
 												string("age: 48."),
 											},
@@ -570,8 +655,10 @@ var testCases = []struct {
 										Children: []*DescendantPerson{
 											{
 												ID: int(5),
-												Details: []string{
+												Headings: []string{
 													string("Elizabeth Ann Martin"),
+												},
+												Details: []string{
 													string("b: 24 Apr 1858. d: 1859"),
 													string("age: 0."),
 												},
@@ -579,8 +666,10 @@ var testCases = []struct {
 											},
 											{
 												ID: int(6),
-												Details: []string{
+												Headings: []string{
 													string("Martha Martin"),
+												},
+												Details: []string{
 													string("b: abt 1860 in Trowbridge, Wiltshire, England. d: Deceased."),
 												},
 												Families: []*DescendantFamily(nil),
@@ -591,16 +680,20 @@ var testCases = []struct {
 							},
 							{
 								ID: int(7),
-								Details: []string{
+								Headings: []string{
 									string("Susan Johnson"),
+								},
+								Details: []string{
 									string("b: 25 Apr 1840 in Swindon, Wiltshire, England. d: Deceased."),
 								},
 								Families: []*DescendantFamily(nil),
 							},
 							{
 								ID: int(8),
-								Details: []string{
+								Headings: []string{
 									string("Anna Johnson"),
+								},
+								Details: []string{
 									string("b: 22 May 1842 in Chippenham, Wiltshire, England. d: 1 Oct 1898 in Bath, Somerset, England"),
 									string("age: 56."),
 								},
@@ -608,8 +701,10 @@ var testCases = []struct {
 									{
 										Other: &DescendantPerson{
 											ID: int(9),
-											Details: []string{
+											Headings: []string{
 												string("William Brown"),
+											},
+											Details: []string{
 												string("b: Abt. 1839 in Limerick, Ireland. m: 13 Nov 1864 in Swindon, Wiltshire, England. d: 11 May 1867 in St. Luke’s Infirmary, Bath, Somerset, England"),
 												string("age: 28."),
 											},
@@ -619,16 +714,20 @@ var testCases = []struct {
 										Children: []*DescendantPerson{
 											{
 												ID: int(10),
-												Details: []string{
+												Headings: []string{
 													string("Thomas Brown"),
+												},
+												Details: []string{
 													string("b: 3 Nov 1865 in Trowbridge, Wiltshire, England. d: Deceased."),
 												},
 												Families: []*DescendantFamily{
 													{
 														Other: &DescendantPerson{
 															ID: int(11),
-															Details: []string{
+															Headings: []string{
 																string("Charles Lewis"),
+															},
+															Details: []string{
 																string("b: 1 Nov 1843 in Bristol, Gloucestershire, England. m: 7 Dec 1867 in Swindon, Wiltshire, England. d: Bef. 1871 in Trowbridge, Wiltshire, England"),
 																string("age: 27."),
 															},
@@ -641,17 +740,21 @@ var testCases = []struct {
 											},
 											{
 												ID: int(12),
+												Headings: []string{
+													"Emily Lewis",
+												},
 												Details: []string{
-													string("Emily Lewis"),
-													string("b: 15 Oct 1868 in Swindon, Wiltshire, England. d: 8 Aug 1956 in Wiltshire, England"),
-													string("age: 87."),
+													"b: 15 Oct 1868 in Swindon, Wiltshire, England. d: 8 Aug 1956 in Wiltshire, England",
+													"age: 87.",
 												},
 												Families: []*DescendantFamily{
 													{
 														Other: &DescendantPerson{
 															ID: int(13),
-															Details: []string{
+															Headings: []string{
 																string("Alfred Green"),
+															},
+															Details: []string{
 																string("b: 25 Feb 1864 in Norton, Somerset, England. m: 4 Sep 1888 in Swindon, Wiltshire, England. d: 28 Feb 1955 in Chippenham, Wiltshire, England"),
 																string("age: 91."),
 															},
@@ -663,8 +766,10 @@ var testCases = []struct {
 													{
 														Other: &DescendantPerson{
 															ID: int(14),
-															Details: []string{
+															Headings: []string{
 																string("Joseph Navarro"),
+															},
+															Details: []string{
 																string("b: 1840 in Bristol, Gloucestershire, England. m: 28 Oct 1872 in Swindon, Wiltshire, England. d: 15 July 1880 in Trowbridge, Wiltshire, England"),
 																string("age: 40."),
 															},
@@ -681,8 +786,10 @@ var testCases = []struct {
 							},
 							{
 								ID: int(15),
-								Details: []string{
+								Headings: []string{
 									string("David Johnson"),
+								},
+								Details: []string{
 									string("b: 15 Feb 1844 in Chippenham, Wiltshire, England. d: Oct 1916 in Swindon, Wiltshire, England"),
 									string("age: 72."),
 								},
@@ -690,8 +797,10 @@ var testCases = []struct {
 									{
 										Other: &DescendantPerson{
 											ID: int(16),
-											Details: []string{
+											Headings: []string{
 												string("Martha Jane Harper"),
+											},
+											Details: []string{
 												string("b: abt 1846 in Fleur-de-Lys, Monmouthshire, Wales. m: 17 Sep 1873 in St. Luke's Church, Swindon, Wiltshire, England. d: Jul 1923 in Swindon, Wiltshire, England"),
 												string("age: 77."),
 											},
@@ -701,16 +810,20 @@ var testCases = []struct {
 										Children: []*DescendantPerson{
 											{
 												ID: int(17),
-												Details: []string{
+												Headings: []string{
 													string("John H Johnson"),
+												},
+												Details: []string{
 													string("b: abt 1875 in Swindon, Wiltshire, England. d: Deceased."),
 												},
 												Families: []*DescendantFamily(nil),
 											},
 											{
 												ID: int(18),
-												Details: []string{
+												Headings: []string{
 													string("Jane Elizabeth Harper Johnson"),
+												},
+												Details: []string{
 													string("b: 1880 in Swindon, Wiltshire, England. d: Deceased."),
 												},
 												Families: []*DescendantFamily(nil),
@@ -721,8 +834,10 @@ var testCases = []struct {
 							},
 							{
 								ID: int(19),
-								Details: []string{
+								Headings: []string{
 									string("James Johnson"),
+								},
+								Details: []string{
 									string("b: 30 Mar 1849 in Chippenham, Wiltshire, England. d: 6 Apr 1849 in Chippenham, Wiltshire, England"),
 									string("age: 0."),
 								},
@@ -730,8 +845,10 @@ var testCases = []struct {
 							},
 							{
 								ID: int(20),
-								Details: []string{
+								Headings: []string{
 									string("Peter Johnson"),
+								},
+								Details: []string{
 									string("b: 2 Nov 1851 in Trowbridge, Wiltshire, England. d: Jun 1936 in Swindon, Wiltshire, England"),
 									string("age: 84."),
 								},
@@ -739,8 +856,10 @@ var testCases = []struct {
 									{
 										Other: &DescendantPerson{
 											ID: int(21),
-											Details: []string{
+											Headings: []string{
 												string("Helen Clark"),
+											},
+											Details: []string{
 												string("b: abt 1854 in Trowbridge, Wiltshire, England. m: 2 Dec 1872 in Christchurch, Wiltshire, England. d: 25 Jul 1935 in Swindon, Wiltshire, England"),
 												string("age: 81."),
 											},
@@ -750,8 +869,10 @@ var testCases = []struct {
 										Children: []*DescendantPerson{
 											{
 												ID: int(22),
-												Details: []string{
+												Headings: []string{
 													string("Samuel Johnson"),
+												},
+												Details: []string{
 													string("b: abt 1874 in Trowbridge, Wiltshire, England. d: Dec 1948 in Chippenham, Wiltshire, England"),
 													string("age: 74."),
 												},
@@ -759,8 +880,10 @@ var testCases = []struct {
 													{
 														Other: &DescendantPerson{
 															ID: int(23),
-															Details: []string{
+															Headings: []string{
 																string("Mary Wells"),
+															},
+															Details: []string{
 																string("b: abt 1875 in Nk, Wiltshire, England. m: Jul 1902 in Wiltshire, England. d: Deceased."),
 															},
 															Families: []*DescendantFamily(nil),
@@ -772,8 +895,10 @@ var testCases = []struct {
 											},
 											{
 												ID: int(24),
-												Details: []string{
+												Headings: []string{
 													string("Eliza Johnson"),
+												},
+												Details: []string{
 													string("b: abt 1882 in Devizes, Wiltshire, England. d: Abt 1961 in Salisbury, Wiltshire, England"),
 													string("age: 79."),
 												},

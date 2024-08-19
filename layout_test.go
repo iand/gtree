@@ -261,13 +261,13 @@ func (ba *blurbAsserter) hasText(texts ...string) *blurbAsserter {
 		}
 
 		for i := range texts {
-			if i == 0 {
-				if b.HeadingText != texts[i] {
-					t.Errorf("blurb %d: got heading text %q, wanted %q", ba.id, b.HeadingText, texts[i])
+			if i < len(b.HeadingTexts) {
+				if b.HeadingTexts[i] != texts[i] {
+					t.Errorf("blurb %d: got heading text %q, wanted %q", ba.id, b.HeadingTexts[i], texts[i])
 				}
 				continue
 			}
-			if b.DetailTexts[i-1] != texts[i] {
+			if b.DetailTexts[i-len(b.HeadingTexts)] != texts[i] {
 				t.Errorf("blurb %d: got detail text %q, wanted %q", ba.id, b.DetailTexts[i-1], texts[i])
 			}
 		}

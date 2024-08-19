@@ -366,9 +366,9 @@ func (l *AncestorLayout) newBlurb(id int, texts []string, col int, row int, chil
 	}
 
 	if len(texts) > 0 {
-		b.HeadingText = texts[0]
+		b.HeadingTexts = append(b.HeadingTexts, texts[0])
 		b.Height = b.HeadingStyle.LineHeight
-		b.Width = textWidth([]rune(b.HeadingText), b.HeadingStyle.FontSize)
+		b.Width = textWidth([]rune(b.HeadingTexts[0]), b.HeadingStyle.FontSize)
 
 		if len(texts) > 1 {
 

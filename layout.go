@@ -52,9 +52,9 @@ func rightDistance(a, b *Blurb) int {
 // Blurb represents a visual element in the layout, typically used to display information about a person in a chart.
 // It includes various properties to control its positioning, text content, and relationships with other blurbs.
 type Blurb struct {
-	ID          int
-	HeadingText string
-	DetailTexts []string
+	ID           int
+	HeadingTexts []string
+	DetailTexts  []string
 
 	HeadingStyle TextStyle // HeadingStyle is the style of the font to use for the first line of each blurb.
 	DetailStyle  TextStyle // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
@@ -62,7 +62,7 @@ type Blurb struct {
 	// Text          []string
 	CentreText          bool  // true if the text for this blurb is better presented as centred
 	Width               Pixel // Width is the horizontal extent of the Blurb
-	AbsolutePositioning bool  // when true, the position of the blurb is controlled by TopPos and LeftPos, otherwise it is calclated relative to neighbours
+	AbsolutePositioning bool  // when true, the position of the blurb is controlled by TopPos and LeftPos, otherwise it is calculated relative to neighbours
 	TopPos              Pixel // TopPos is the absolute vertical position of the upper edge of the Blurb
 	LeftPos             Pixel // LeftPos is the absolute horizontal position of the left edge of the Blurb
 	Height              Pixel // Height is the vertical extent of the Blurb

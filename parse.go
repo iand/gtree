@@ -48,12 +48,19 @@ var reLine = regexp.MustCompile(`^(\s*)(\d+|sp|\+)(?:\.)?\s*(.+)$`)
 // The name and the detail are trimmed to remove leading and trailing whitespace. Outer
 // matching parantheses are removed from the detail text before trimming.
 //
+// If the SurnameSeparateLine field is true then the name will be parsed to detect
+// a surname, which will be placed on a seperate heading line. If the name ends in
+// one or more words delimted by slashes '/' then these will be used as the surname,
+// otherwise the surname will be taken to be the last whole word after a space.
+//
 // Any semicolons ';' within the detail text are treated as line breaks, resulting in
 // multiple lines of text.
 //
 // Identifiers are assigned using the line number of the person's entry. People in a family
 // group are placed in the order the lines are read from the input.
-type Parser struct{}
+type Parser struct {
+	SurnameSeparateLine bool // if true the parser puts the surname on a second header line
+}
 
 func (p *Parser) Parse(ctx context.Context, r io.Reader) (*DescendantChart, error) {
 	s := bufio.NewScanner(r)
@@ -80,13 +87,16 @@ func (p *Parser) Parse(ctx context.Context, r io.Reader) (*DescendantChart, erro
 		matches := reLine.FindStringSubmatch(line)
 		if len(matches) == 4 {
 			// start a new entry
+			headings, details := p.parseDetails(ctx, strings.TrimSpace(matches[3]))
+
 			cur = &entry{
 				lineno: lineno,
 				indent: len(matches[1]),
 				text:   strings.TrimSpace(matches[3]),
 				person: &DescendantPerson{
-					ID:      len(entries) + 1,
-					Details: p.parseDetails(ctx, strings.TrimSpace(matches[3])),
+					ID:       len(entries) + 1,
+					Headings: headings,
+					Details:  details,
 				},
 			}
 
@@ -176,7 +186,7 @@ func (p *Parser) Parse(ctx context.Context, r io.Reader) (*DescendantChart, erro
 }
 
 // parseDetails parses a person's details from a line
-func (p *Parser) parseDetails(ctx context.Context, s string) []string {
+func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string) {
 	isDetailStart := func(s string) bool {
 		return strings.HasPrefix(s, "(") ||
 			strings.HasPrefix(s, "b.") ||
@@ -187,11 +197,31 @@ func (p *Parser) parseDetails(ctx context.Context, s string) []string {
 			strings.HasPrefix(s, "d:")
 	}
 
-	cleanLines := func(name, detail string) []string {
+	maybeSplitName := func(name string) []string {
+		name = strings.TrimSpace(name)
+		if !p.SurnameSeparateLine {
+			return []string{name}
+		}
+
+		if strings.HasSuffix(name, "/") {
+			sl := strings.IndexByte(name, '/')
+			if sl != -1 {
+				return []string{strings.TrimSpace(name[:sl]), name[sl+1 : len(name)-1]}
+			}
+		}
+
+		sp := strings.LastIndexByte(name, ' ')
+		if sp == -1 {
+			return []string{name}
+		}
+		return []string{strings.TrimSpace(name[:sp]), name[sp:]}
+	}
+
+	cleanLines := func(name, detail string) ([]string, []string) {
 		if name != "" && detail == "" {
 			br := strings.IndexByte(name, '(')
 			if br == -1 {
-				return []string{strings.TrimSpace(name)}
+				return maybeSplitName(name), []string{}
 			}
 
 			detail = name[br:]
@@ -209,13 +239,10 @@ func (p *Parser) parseDetails(ctx context.Context, s string) []string {
 
 		name = strings.TrimSpace(name)
 		if name == "" {
-			return lines
+			return []string{}, lines
 		}
 
-		ret := make([]string, 0, len(lines)+1)
-		ret = append(ret, name)
-		ret = append(ret, lines...)
-		return ret
+		return maybeSplitName(name), lines
 	}
 
 	s = strings.TrimSpace(s)
