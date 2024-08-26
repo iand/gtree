@@ -3,8 +3,6 @@ package gtree
 import (
 	"fmt"
 	"log/slog"
-	"math"
-	prand "math/rand"
 	"os"
 )
 
@@ -67,18 +65,22 @@ func DefaultLayoutOptions() *LayoutOptions {
 		TitleStyle: TextStyle{
 			FontSize:   40,
 			LineHeight: 42,
+			Color:      "#000",
 		},
 		NoteStyle: TextStyle{
 			FontSize:   20,
 			LineHeight: 22,
+			Color:      "#000",
 		},
 		HeadingStyle: TextStyle{
 			FontSize:   20,
 			LineHeight: 22,
+			Color:      "#000",
 		},
 		DetailStyle: TextStyle{
 			FontSize:   16,
 			LineHeight: 18,
+			Color:      "#000",
 		},
 	}
 }
@@ -246,11 +248,6 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 			prevChild = c
 
 			// Attempt to keep with grandparent marker, to encourage tree to look centred
-			// if parent != nil {
-			// 	c.KeepWith = append(c.KeepWith, parent)
-			// 	parent.KeepWith = append(parent.KeepWith, c)
-			// }
-
 			if b.LeftStop == nil {
 				b.LeftStop = c
 			}
@@ -281,38 +278,43 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, row int, parent *Blurb) *Blurb {
 	texts = wrapText(texts, l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
 	b := &Blurb{
-		ID: id,
-		// Text:              texts,
+		ID:             id,
 		Row:            row,
 		Parent:         parent,
 		TopHookOffset:  l.opts.Hspace * 2,
 		SideHookOffset: l.opts.HeadingStyle.LineHeight / 2,
-		HeadingStyle:   l.opts.HeadingStyle,
-		DetailStyle:    l.opts.DetailStyle,
+		HeadingTexts: TextSection{
+			Lines: []string{},
+			Style: &l.opts.HeadingStyle,
+		},
+		DetailTexts: TextSection{
+			Lines: []string{},
+			Style: &l.opts.DetailStyle,
+		},
 	}
 
 	if len(headings) > 0 {
-		b.HeadingTexts = headings
-		b.Height = b.HeadingStyle.LineHeight * Pixel(len(b.HeadingTexts))
+		b.HeadingTexts.Lines = headings
+		b.Height = b.HeadingTexts.Style.LineHeight * Pixel(len(b.HeadingTexts.Lines))
 	} else {
-		b.HeadingTexts = append(b.HeadingTexts, texts[0])
-		b.Height = b.HeadingStyle.LineHeight
+		b.HeadingTexts.Lines = append(b.HeadingTexts.Lines, texts[0])
+		b.Height = b.HeadingTexts.Style.LineHeight
 		texts = texts[1:]
 	}
 
 	if len(texts) > 0 {
-		b.DetailTexts = texts
-		b.Height += b.DetailStyle.LineHeight * Pixel(len(b.DetailTexts))
+		b.DetailTexts.Lines = texts
+		b.Height += b.DetailTexts.Style.LineHeight * Pixel(len(b.DetailTexts.Lines))
 	}
 
-	for i := range b.HeadingTexts {
-		wl := textWidth([]rune(b.HeadingTexts[i]), b.HeadingStyle.FontSize)
+	for i := range b.HeadingTexts.Lines {
+		wl := textWidth([]rune(b.HeadingTexts.Lines[i]), b.HeadingTexts.Style.FontSize)
 		if wl > b.Width {
 			b.Width = wl
 		}
 	}
-	for i := range b.DetailTexts {
-		wl := textWidth([]rune(b.DetailTexts[i]), b.DetailStyle.FontSize)
+	for i := range b.DetailTexts.Lines {
+		wl := textWidth([]rune(b.DetailTexts.Lines[i]), b.DetailTexts.Style.FontSize)
 		if wl > b.Width {
 			b.Width = wl
 		}
@@ -326,185 +328,6 @@ func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, r
 	l.rows[row] = append(l.rows[row], b)
 
 	return b
-}
-
-type IteratedDescendantArranger struct{}
-
-func (a *IteratedDescendantArranger) Arrange(l *DescendantLayout) {
-	a.align(l)
-	a.reflow(l)
-}
-
-// align aligns the blurbs and rows in the layout, ensuring proper spacing.
-func (a *IteratedDescendantArranger) align(l *DescendantLayout) {
-	// spread rows evenly
-	top := Pixel(0)
-	for _, bs := range l.rows {
-		rowHeight := Pixel(0)
-		for i := range bs {
-			bs[i].TopPos = top
-			if i > 0 {
-				bs[i].LeftPad = l.opts.Hspace
-				bs[i].LeftNeighbour = bs[i-1]
-
-				// add a little more padding if neighbours have parents that are different
-				if bs[i].ID > 0 && (bs[i].Parent != nil || bs[i-1].Parent != nil) && (bs[i].Parent != bs[i-1].Parent) {
-					bs[i].LeftPad += l.opts.Hspace * 2
-					if bs[i-1].Parent != nil {
-						bs[i].KeepRightOf = append(bs[i].KeepRightOf, bs[i-1].Parent)
-					}
-				}
-			}
-
-			rowHeight = max(rowHeight, bs[i].Height)
-		}
-		top += rowHeight + l.generationDrop
-	}
-
-	// get parents roughly aligned over their children
-	for iter := 0; iter < 3; iter++ {
-		for r := len(l.rows) - 1; r >= 0; r-- {
-			bs := l.rows[r]
-			for i := range bs {
-				if !bs[i].NoShift && bs[i].LeftStop != nil && bs[i].LeftStop.X() > bs[i].X() {
-					bs[i].LeftShift += bs[i].LeftStop.X() - bs[i].X()
-				}
-				if bs[i].RightStop != nil && bs[i].X() > bs[i].RightStop.X() {
-					bs[i].RightStop.LeftShift += bs[i].X() - bs[i].RightStop.X()
-				}
-			}
-		}
-	}
-}
-
-// jiggle randomly shifts a blurb in the layout, returning a function to undo the shift.
-func (a *IteratedDescendantArranger) jiggle(l *DescendantLayout) func() {
-	// pick a blurb at random
-
-	var b *Blurb
-	for b == nil || b.NoShift {
-		row := prand.Intn(len(l.rows))
-		n := prand.Intn(len(l.rows[row]))
-
-		b = l.rows[row][n]
-
-	}
-	savedShift := b.LeftShift
-
-	delta := Pixel(0)
-	for delta == 0 || b.LeftShift+delta < 0 || (b.LeftStop != nil && b.X() > b.LeftStop.X() && b.X()+delta < b.LeftStop.X()) || (b.RightStop != nil && b.X() < b.RightStop.X() && b.X()+delta > b.RightStop.X()) {
-		delta = Pixel((0.5 - (prand.Float64() * prand.Float64())) * float64(l.opts.Hspace))
-	}
-
-	b.LeftShift += delta
-	return func() { b.LeftShift = savedShift }
-}
-
-// reflow adjusts the layout using simulated annealing to optimise the fitness of the layout.
-func (a *IteratedDescendantArranger) reflow(l *DescendantLayout) {
-	temp := float64(l.opts.Iterations) * 10
-	for i := 0; i < l.opts.Iterations; i++ {
-		fitnessBefore := a.fitness(l)
-		undo := a.jiggle(l)
-		fitnessAfter := a.fitness(l)
-
-		// keep this change if the new fitness is lower
-		diff := fitnessAfter - fitnessBefore
-		if diff <= 0 {
-			continue
-		}
-
-		t := temp / float64(i+1)
-
-		// otherwise there is an ever decreasing chance of keeping a worse fitness
-		prob := math.Exp(-float64(diff) / t)
-		if prand.Float64() <= prob {
-			continue
-		} else {
-			undo()
-		}
-
-	}
-
-	a.centreBlurbs(l)
-
-	// This is top-down layout
-	l.connectors = []*Connector{}
-	for _, b := range l.blurbs {
-		if b.Parent != nil {
-			l.connectors = append(l.connectors, &Connector{
-				Points: []Point{
-					// Start just above blurb
-					{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
-					// Move up by ChildDrop
-					{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
-					// Move horizontally to centre of parent
-					{X: b.Parent.X(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
-					// Move up to centre of parent
-					{X: b.Parent.X(), Y: b.Parent.Bottom() + l.opts.LineGap},
-				},
-			})
-		}
-	}
-}
-
-// centreBlurbs centres the blurbs within the layout.
-func (a *IteratedDescendantArranger) centreBlurbs(l *DescendantLayout) {
-	var minX, maxX, minY, maxY Pixel
-	initialized := false
-
-	for _, b := range l.blurbs {
-		if l.opts.Debug {
-			slog.Info("blurb position", "l", b.Left(), "r", b.Right(), "t", b.TopPos, "b", b.Bottom())
-		}
-		if !initialized {
-			minX = b.Left()
-			maxX = b.Right()
-			minY = b.TopPos
-			maxY = b.Bottom()
-			initialized = true
-			continue
-		}
-		minX = min(minX, b.Left())
-		maxX = max(maxX, b.Right())
-		minY = min(minY, b.TopPos)
-		maxY = max(maxY, b.Bottom())
-	}
-
-	minX -= l.opts.Margin
-	maxX += l.opts.Margin
-	minY -= l.opts.Margin
-	maxY += l.opts.Margin
-
-	th, _ := titleDimensions(l.title, l.notes, l.opts.TitleStyle, l.opts.NoteStyle)
-	minY -= th
-
-	for _, bs := range l.rows {
-		for i := range bs {
-			if i == 0 {
-				bs[i].LeftPad -= minX
-			}
-			bs[i].TopPos -= minY
-		}
-	}
-
-	l.width = maxX - minX
-	l.height = maxY - minY
-}
-
-// fitness calculates the fitness of the layout, used for layout optimisation.
-func (a *IteratedDescendantArranger) fitness(l *DescendantLayout) int {
-	total := 0
-	for _, b := range l.blurbs {
-		for _, kw := range b.KeepWith {
-			total += distance(b, kw)
-		}
-		for _, kw := range b.KeepRightOf {
-			total += rightDistance(b, kw) * 10 // enforce strongly
-		}
-	}
-
-	return total
 }
 
 type SpreadingDescendantArranger struct{}

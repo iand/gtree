@@ -256,19 +256,19 @@ func (a *blurbAsserter) assert(t *testing.T, l *DescendantLayout) {
 
 func (ba *blurbAsserter) hasText(texts ...string) *blurbAsserter {
 	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
-		if len(b.DetailTexts) != len(texts)-1 {
-			t.Fatalf("blurb %d: got %d detail texts, wanted %d", ba.id, len(b.DetailTexts), len(texts)-1)
+		if len(b.DetailTexts.Lines) != len(texts)-1 {
+			t.Fatalf("blurb %d: got %d detail texts, wanted %d", ba.id, len(b.DetailTexts.Lines), len(texts)-1)
 		}
 
 		for i := range texts {
-			if i < len(b.HeadingTexts) {
-				if b.HeadingTexts[i] != texts[i] {
-					t.Errorf("blurb %d: got heading text %q, wanted %q", ba.id, b.HeadingTexts[i], texts[i])
+			if i < len(b.HeadingTexts.Lines) {
+				if b.HeadingTexts.Lines[i] != texts[i] {
+					t.Errorf("blurb %d: got heading text %q, wanted %q", ba.id, b.HeadingTexts.Lines[i], texts[i])
 				}
 				continue
 			}
-			if b.DetailTexts[i-len(b.HeadingTexts)] != texts[i] {
-				t.Errorf("blurb %d: got detail text %q, wanted %q", ba.id, b.DetailTexts[i-1], texts[i])
+			if b.DetailTexts.Lines[i-len(b.HeadingTexts.Lines)] != texts[i] {
+				t.Errorf("blurb %d: got detail text %q, wanted %q", ba.id, b.DetailTexts.Lines[i-1], texts[i])
 			}
 		}
 	})

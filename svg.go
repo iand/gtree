@@ -44,7 +44,7 @@ func SVG(lay Layout) (string, error) {
 	for _, b := range lay.Blurbs() {
 		_ = b
 		if lay.Debug() {
-			fmt.Fprintf(buf, "<!-- blurb %s (left=%d, top=%d, width=%d, height=%d) -->\n", b.HeadingTexts[0], b.Left(), b.TopPos, b.Width, b.Height)
+			fmt.Fprintf(buf, "<!-- blurb %s (left=%d, top=%d, width=%d, height=%d) -->\n", b.HeadingTexts.Lines[0], b.Left(), b.TopPos, b.Width, b.Height)
 			fmt.Fprintf(buf, "<rect x=\"%s\" y=\"%s\" width=\"%s\" height=\"%s\" fill=\"#eeeeee\"/>", length(b.Left()), length(b.TopPos), length(b.Width), length(b.Height))
 		}
 		textAnchor := "start"
@@ -53,18 +53,14 @@ func SVG(lay Layout) (string, error) {
 			textAnchor = "middle"
 			textx = length(b.X())
 		}
-		// if len(b.DetailTexts) == 0 {
-		// fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", textx, length(b.TopPos), textAnchor, b.HeadingStyle.FontSize, b.HeadingText)
-		// } else {
 		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\">\n", textx, length(b.TopPos), textAnchor)
-		for _, line := range b.HeadingTexts {
-			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\">%s</tspan>\n", textx, length(b.HeadingStyle.LineHeight), b.HeadingStyle.FontSize, line)
+		for _, line := range b.HeadingTexts.Lines {
+			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" fill=\"%s\">%s</tspan>\n", textx, length(b.HeadingTexts.Style.LineHeight), b.HeadingTexts.Style.FontSize, b.HeadingTexts.Style.Color, line)
 		}
-		for _, line := range b.DetailTexts {
-			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\">%s</tspan>\n", textx, length(b.DetailStyle.LineHeight), b.DetailStyle.FontSize, line)
+		for _, line := range b.DetailTexts.Lines {
+			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" fill=\"%s\">%s</tspan>\n", textx, length(b.DetailTexts.Style.LineHeight), b.DetailTexts.Style.FontSize, b.DetailTexts.Style.Color, line)
 		}
 		fmt.Fprintf(buf, "</text>\n")
-		// }
 	}
 
 	// Add lines

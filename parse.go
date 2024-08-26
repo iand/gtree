@@ -217,7 +217,7 @@ func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string
 		return []string{strings.TrimSpace(name[:sp]), name[sp:]}
 	}
 
-	cleanLines := func(name, detail string) ([]string, []string) {
+	cleanLines := func(name, detail, format string) ([]string, []string) {
 		if name != "" && detail == "" {
 			br := strings.IndexByte(name, '(')
 			if br == -1 {
@@ -245,9 +245,10 @@ func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string
 		return maybeSplitName(name), lines
 	}
 
+	format := ""
 	s = strings.TrimSpace(s)
 	if isDetailStart(s) {
-		return cleanLines("", s)
+		return cleanLines("", s, format)
 	}
 
 	pos := 0
@@ -255,12 +256,21 @@ func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string
 	for sp != -1 {
 		pos += sp + 1
 
+		if strings.HasPrefix(s[pos:], "[") {
+			cb := strings.IndexByte(s[pos:], ']')
+			if cb != -1 {
+				format = s[pos : pos+cb]
+				pos += cb + 1
+				continue
+			}
+		}
+
 		if isDetailStart(s[pos:]) {
-			return cleanLines(s[:pos-1], s[pos:])
+			return cleanLines(s[:pos-1], s[pos:], format)
 		}
 
 		sp = strings.IndexByte(s[pos:], ' ')
 	}
 
-	return cleanLines(s, "")
+	return cleanLines(s, "", format)
 }

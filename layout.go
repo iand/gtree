@@ -53,11 +53,8 @@ func rightDistance(a, b *Blurb) int {
 // It includes various properties to control its positioning, text content, and relationships with other blurbs.
 type Blurb struct {
 	ID           int
-	HeadingTexts []string
-	DetailTexts  []string
-
-	HeadingStyle TextStyle // HeadingStyle is the style of the font to use for the first line of each blurb.
-	DetailStyle  TextStyle // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
+	HeadingTexts TextSection
+	DetailTexts  TextSection
 
 	// Text          []string
 	CentreText          bool  // true if the text for this blurb is better presented as centred
@@ -254,8 +251,14 @@ var runeWidths = map[rune]Pixel{
 }
 
 type TextStyle struct {
-	FontSize   Pixel // FontSize is the size of the font to use for the text of each blurb.
-	LineHeight Pixel // ineHeight is the vertical distance between lines of text of the same style.
+	FontSize   Pixel  // FontSize is the size of the font to use for the text of each blurb.
+	LineHeight Pixel  // LineHeight is the vertical distance between lines of text of the same style.
+	Color      string // Color is the color of the text. The default is black #000000.
+}
+
+type TextSection struct {
+	Lines []string
+	Style *TextStyle
 }
 
 func wrapText(texts []string, maxWidth Pixel, fontSize Pixel) []string {

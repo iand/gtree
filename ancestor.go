@@ -55,18 +55,22 @@ func DefaultAncestorLayoutOptions() *AncestorLayoutOptions {
 		TitleStyle: TextStyle{
 			FontSize:   40,
 			LineHeight: 42,
+			Color:      "#000",
 		},
 		NoteStyle: TextStyle{
 			FontSize:   20,
 			LineHeight: 22,
+			Color:      "#000",
 		},
 		HeadingStyle: TextStyle{
 			FontSize:   20,
 			LineHeight: 22,
+			Color:      "#000",
 		},
 		DetailStyle: TextStyle{
 			FontSize:   16,
 			LineHeight: 18,
+			Color:      "#000",
 		},
 
 		DetailWrapWidth: 18 * 16,
@@ -357,26 +361,32 @@ func (l *AncestorLayout) newBlurb(id int, texts []string, col int, row int, chil
 		Col:                 col,
 		Row:                 col,
 		AbsolutePositioning: true,
-		// Parent: parent,
-		// TopHookOffset:     l.opts.Hspace * 2,
+
+		HeadingTexts: TextSection{
+			Lines: []string{},
+			Style: &l.opts.HeadingStyle,
+		},
+		DetailTexts: TextSection{
+			Lines: []string{},
+			Style: &l.opts.DetailStyle,
+		},
+
 		SideHookOffset: (l.opts.HeadingStyle.LineHeight * 2) / 3,
 		LeftNeighbour:  child,
-		HeadingStyle:   l.opts.HeadingStyle,
-		DetailStyle:    l.opts.DetailStyle,
 	}
 
 	if len(texts) > 0 {
-		b.HeadingTexts = append(b.HeadingTexts, texts[0])
-		b.Height = b.HeadingStyle.LineHeight
-		b.Width = textWidth([]rune(b.HeadingTexts[0]), b.HeadingStyle.FontSize)
+		b.HeadingTexts.Lines = append(b.HeadingTexts.Lines, texts[0])
+		b.Height = b.HeadingTexts.Style.LineHeight
+		b.Width = textWidth([]rune(b.HeadingTexts.Lines[0]), b.HeadingTexts.Style.FontSize)
 
 		if len(texts) > 1 {
 
-			b.DetailTexts = wrapText(texts[1:], l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
-			b.Height += b.DetailStyle.LineHeight * Pixel(len(b.DetailTexts))
+			b.DetailTexts.Lines = wrapText(texts[1:], l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
+			b.Height += b.DetailTexts.Style.LineHeight * Pixel(len(b.DetailTexts.Lines))
 
-			for i := range b.DetailTexts {
-				wl := textWidth([]rune(b.DetailTexts[i]), b.DetailStyle.FontSize)
+			for i := range b.DetailTexts.Lines {
+				wl := textWidth([]rune(b.DetailTexts.Lines[i]), b.DetailTexts.Style.FontSize)
 				if wl > b.Width {
 					b.Width = wl
 				}
