@@ -35,20 +35,6 @@ type Connector struct {
 	Points []Point
 }
 
-// distance calculates the squared horizontal distance between two blurbs, used for determining layout alignment.
-func distance(a, b *Blurb) int {
-	return int((a.X() - b.X()) * (a.X() - b.X()))
-}
-
-// rightDistance calculates the squared distance between two blurbs only if the first blurb is to the left of the second.
-// This is used to enforce horizontal spacing between blurbs in the layout.
-func rightDistance(a, b *Blurb) int {
-	if a.X() > b.X() {
-		return 0
-	}
-	return int((a.X() - b.X()) * (a.X() - b.X()))
-}
-
 // Blurb represents a visual element in the layout, typically used to display information about a person in a chart.
 // It includes various properties to control its positioning, text content, and relationships with other blurbs.
 type Blurb struct {

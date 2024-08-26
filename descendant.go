@@ -3,7 +3,6 @@ package gtree
 import (
 	"fmt"
 	"log/slog"
-	"os"
 )
 
 // DescendantChart represents a chart of descendants, with the earliest ancestor (root person) at the top.
@@ -503,8 +502,4 @@ func (a *SpreadingDescendantArranger) centreBlurbs(l *DescendantLayout) {
 
 	l.width = maxX - minX
 	l.height = maxY - minY
-}
-
-func log(vs ...any) {
-	fmt.Fprintln(os.Stderr, vs...)
 }
