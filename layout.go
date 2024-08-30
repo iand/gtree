@@ -41,6 +41,7 @@ type Blurb struct {
 	ID           int
 	HeadingTexts TextSection
 	DetailTexts  TextSection
+	Tags         []string
 
 	// Text          []string
 	CentreText          bool  // true if the text for this blurb is better presented as centred
@@ -244,7 +245,7 @@ type TextStyle struct {
 
 type TextSection struct {
 	Lines []string
-	Style *TextStyle
+	Style TextStyle
 }
 
 func wrapText(texts []string, maxWidth Pixel, fontSize Pixel) []string {

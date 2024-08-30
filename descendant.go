@@ -21,6 +21,7 @@ type DescendantPerson struct {
 	Headings []string
 	Details  []string
 	Families []*DescendantFamily
+	Tags     []string
 }
 
 // DescendantFamily represents a family unit, including the spouse and their children.
@@ -169,7 +170,7 @@ func (l *DescendantLayout) Debug() bool { return l.opts.Debug }
 
 // addPerson adds a person and their family to the layout at the specified row.
 func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb) *Blurb {
-	b := l.newBlurb(p.ID, p.Headings, p.Details, row, parent)
+	b := l.newBlurb(p.ID, p.Headings, p.Details, p.Tags, row, parent)
 
 	var prevSpouseWithChildren *Blurb
 	var lastChildOfPrevFamily *Blurb
@@ -186,7 +187,7 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 		var famCentre *Blurb
 		var famRightmost *Blurb
 		if p.Families[fi].Other != nil {
-			rel = l.newBlurb(-p.Families[fi].Other.ID, []string{}, relDetails, row, nil)
+			rel = l.newBlurb(-p.Families[fi].Other.ID, []string{}, relDetails, []string{}, row, nil)
 			rel.CentreText = true
 			famCentre = rel
 
@@ -274,7 +275,7 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 }
 
 // newBlurb creates a new blurb for the given person or family at the specified row.
-func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, row int, parent *Blurb) *Blurb {
+func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, tags []string, row int, parent *Blurb) *Blurb {
 	texts = wrapText(texts, l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
 	b := &Blurb{
 		ID:             id,
@@ -284,12 +285,13 @@ func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, r
 		SideHookOffset: l.opts.HeadingStyle.LineHeight / 2,
 		HeadingTexts: TextSection{
 			Lines: []string{},
-			Style: &l.opts.HeadingStyle,
+			Style: l.opts.HeadingStyle,
 		},
 		DetailTexts: TextSection{
 			Lines: []string{},
-			Style: &l.opts.DetailStyle,
+			Style: l.opts.DetailStyle,
 		},
+		Tags: tags,
 	}
 
 	if len(headings) > 0 {

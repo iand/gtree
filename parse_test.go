@@ -28,7 +28,7 @@ var testCases = []struct {
 		},
 	},
 	{
-		in: "1. A. Brown b. 24 May 1819, London, England.; d. 22 Jan 1901, Isle of Wight, England.",
+		in: "1. A. Brown (b. 24 May 1819, London, England.; d. 22 Jan 1901, Isle of Wight, England.)",
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
@@ -100,21 +100,20 @@ var testCases = []struct {
 		},
 	},
 	{
-		in: "1. A. Brown (1819-1901 carpenter",
+		name: "missing closing paranthesis",
+		in:   "1. A. Brown (1819-1901 carpenter",
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID: 1,
 				Headings: []string{
 					"A. Brown",
 				},
-				Details: []string{
-					"(1819-1901 carpenter",
-				},
+				Details: []string{},
 			},
 		},
 	},
 	{
-		name: "missing closing parantheses with inner parantheses",
+		name: "missing closing paranthesis with inner parantheses",
 		in:   "1. A. Brown (1819-1901 (carpenter)",
 		want: &DescendantChart{
 			Root: &DescendantPerson{
@@ -122,9 +121,7 @@ var testCases = []struct {
 				Headings: []string{
 					"A. Brown",
 				},
-				Details: []string{
-					"1819-1901 (carpenter",
-				},
+				Details: []string{},
 			},
 		},
 	},
@@ -158,46 +155,13 @@ var testCases = []struct {
 	},
 	{
 		name: "no name no whitespace before detail",
-		in:   "1.b. 24 May 1819",
+		in:   "1.(b. 24 May 1819)",
 		want: &DescendantChart{
 			Root: &DescendantPerson{
 				ID:       1,
 				Headings: []string{},
 				Details: []string{
 					"b. 24 May 1819",
-				},
-			},
-		},
-	},
-
-	{
-		name: "name with ancestry style details",
-		in:   "1.Henry Johnson  b: Abt. 1806 in Kilford, Ireland. d: 17 Sep 1861 in Swindon, Wiltshire, England; age: 55.",
-		want: &DescendantChart{
-			Root: &DescendantPerson{
-				ID: 1,
-				Headings: []string{
-					"Henry Johnson",
-				},
-				Details: []string{
-					"b: Abt. 1806 in Kilford, Ireland. d: 17 Sep 1861 in Swindon, Wiltshire, England",
-					"age: 55.",
-				},
-			},
-		},
-	},
-
-	{
-		name: "name with gramps style details",
-		in:   "1. Bennett, Edward (b. 1843-11-01 - St. David's, Carmarthenshire, Wales, d. before 1871), m. 1867-12-07 - St. Andrew's Catholic Church, High Street, Swansea, Glamorgan, Wales",
-		want: &DescendantChart{
-			Root: &DescendantPerson{
-				ID: 1,
-				Headings: []string{
-					"Bennett, Edward",
-				},
-				Details: []string{
-					"(b. 1843-11-01 - St. David's, Carmarthenshire, Wales, d. before 1871), m. 1867-12-07 - St. Andrew's Catholic Church, High Street, Swansea, Glamorgan, Wales",
 				},
 			},
 		},
@@ -577,32 +541,32 @@ var testCases = []struct {
 	},
 
 	{
-		name: "ancestry descendant chart",
+		name: "long descendant chart",
 		in: `
-1.Henry Johnson  b: Abt. 1806 in Kilford, Ireland. d: 17 Sep 1861 in Swindon, Wiltshire, England; age: 55.
-  + Alice O’Connor  b: Abt. 1800 in Limerick, Ireland. d: 12 Oct 1896 in Trowbridge, Wiltshire, England; age: 96.
-  2.Elizabeth Johnson  b: 7 Dec 1838 in Chippenham, Wiltshire, England. d: Bef. 1928 in Swindon, Wiltshire, England; age: 89.
-  + George Martin  b: abt 1835 in Ireland. m: 28 Jun 1857 in Swindon, Wiltshire, England. d: Mar 1883 in Swindon, Wiltshire, England; age: 48.
-    3.Elizabeth Ann Martin  b: 24 Apr 1858. d: 1859; age: 0.
-    3.Martha Martin  b: abt 1860 in Trowbridge, Wiltshire, England. d: Deceased.
-  2.Susan Johnson  b: 25 Apr 1840 in Swindon, Wiltshire, England. d: Deceased.
-  2.Anna Johnson  b: 22 May 1842 in Chippenham, Wiltshire, England. d: 1 Oct 1898 in Bath, Somerset, England; age: 56.
-  + William Brown  b: Abt. 1839 in Limerick, Ireland. m: 13 Nov 1864 in Swindon, Wiltshire, England. d: 11 May 1867 in St. Luke’s Infirmary, Bath, Somerset, England; age: 28.
-    3.Thomas Brown  b: 3 Nov 1865 in Trowbridge, Wiltshire, England. d: Deceased.
-    + Charles Lewis  b: 1 Nov 1843 in Bristol, Gloucestershire, England. m: 7 Dec 1867 in Swindon, Wiltshire, England. d: Bef. 1871 in Trowbridge, Wiltshire, England; age: 27.
-    3.Emily Lewis  b: 15 Oct 1868 in Swindon, Wiltshire, England. d: 8 Aug 1956 in Wiltshire, England; age: 87.
-    + Alfred Green  b: 25 Feb 1864 in Norton, Somerset, England. m: 4 Sep 1888 in Swindon, Wiltshire, England. d: 28 Feb 1955 in Chippenham, Wiltshire, England; age: 91.
-    + Joseph Navarro  b: 1840 in Bristol, Gloucestershire, England. m: 28 Oct 1872 in Swindon, Wiltshire, England. d: 15 July 1880 in Trowbridge, Wiltshire, England; age: 40.
-  2.David Johnson  b: 15 Feb 1844 in Chippenham, Wiltshire, England. d: Oct 1916 in Swindon, Wiltshire, England; age: 72.
-  + Martha Jane Harper  b: abt 1846 in Fleur-de-Lys, Monmouthshire, Wales. m: 17 Sep 1873 in St. Luke's Church, Swindon, Wiltshire, England. d: Jul 1923 in Swindon, Wiltshire, England; age: 77.
-    3.John H Johnson  b: abt 1875 in Swindon, Wiltshire, England. d: Deceased.
-    3.Jane Elizabeth Harper Johnson  b: 1880 in Swindon, Wiltshire, England. d: Deceased.
-  2.James Johnson  b: 30 Mar 1849 in Chippenham, Wiltshire, England. d: 6 Apr 1849 in Chippenham, Wiltshire, England; age: 0.
-  2.Peter Johnson  b: 2 Nov 1851 in Trowbridge, Wiltshire, England. d: Jun 1936 in Swindon, Wiltshire, England; age: 84.
-  + Helen Clark  b: abt 1854 in Trowbridge, Wiltshire, England. m: 2 Dec 1872 in Christchurch, Wiltshire, England. d: 25 Jul 1935 in Swindon, Wiltshire, England; age: 81.
-    3.Samuel Johnson  b: abt 1874 in Trowbridge, Wiltshire, England. d: Dec 1948 in Chippenham, Wiltshire, England; age: 74.
-    + Mary Wells  b: abt 1875 in Nk, Wiltshire, England. m: Jul 1902 in Wiltshire, England. d: Deceased.
-    3.Eliza Johnson  b: abt 1882 in Devizes, Wiltshire, England. d: Abt 1961 in Salisbury, Wiltshire, England; age: 79.
+1.Henry Johnson  (b: Abt. 1806 in Kilford, Ireland. d: 17 Sep 1861 in Swindon, Wiltshire, England; age: 55.)
+  + Alice O’Connor  (b: Abt. 1800 in Limerick, Ireland. d: 12 Oct 1896 in Trowbridge, Wiltshire, England; age: 96.)
+  2.Elizabeth Johnson  (b: 7 Dec 1838 in Chippenham, Wiltshire, England. d: Bef. 1928 in Swindon, Wiltshire, England; age: 89.)
+  + George Martin  (b: abt 1835 in Ireland. m: 28 Jun 1857 in Swindon, Wiltshire, England. d: Mar 1883 in Swindon, Wiltshire, England; age: 48.)
+    3.Elizabeth Ann Martin  (b: 24 Apr 1858. d: 1859; age: 0.)
+    3.Martha Martin  (b: abt 1860 in Trowbridge, Wiltshire, England. d: Deceased.)
+  2.Susan Johnson  (b: 25 Apr 1840 in Swindon, Wiltshire, England. d: Deceased.)
+  2.Anna Johnson  (b: 22 May 1842 in Chippenham, Wiltshire, England. d: 1 Oct 1898 in Bath, Somerset, England; age: 56.)
+  + William Brown  (b: Abt. 1839 in Limerick, Ireland. m: 13 Nov 1864 in Swindon, Wiltshire, England. d: 11 May 1867 in St. Luke’s Infirmary, Bath, Somerset, England; age: 28.)
+    3.Thomas Brown  (b: 3 Nov 1865 in Trowbridge, Wiltshire, England. d: Deceased.)
+    + Charles Lewis  (b: 1 Nov 1843 in Bristol, Gloucestershire, England. m: 7 Dec 1867 in Swindon, Wiltshire, England. d: Bef. 1871 in Trowbridge, Wiltshire, England; age: 27.)
+    3.Emily Lewis  (b: 15 Oct 1868 in Swindon, Wiltshire, England. d: 8 Aug 1956 in Wiltshire, England; age: 87.)
+    + Alfred Green  (b: 25 Feb 1864 in Norton, Somerset, England. m: 4 Sep 1888 in Swindon, Wiltshire, England. d: 28 Feb 1955 in Chippenham, Wiltshire, England; age: 91.)
+    + Joseph Navarro  (b: 1840 in Bristol, Gloucestershire, England. m: 28 Oct 1872 in Swindon, Wiltshire, England. d: 15 July 1880 in Trowbridge, Wiltshire, England; age: 40.)
+  2.David Johnson  (b: 15 Feb 1844 in Chippenham, Wiltshire, England. d: Oct 1916 in Swindon, Wiltshire, England; age: 72.)
+  + Martha Jane Harper  (b: abt 1846 in Fleur-de-Lys, Monmouthshire, Wales. m: 17 Sep 1873 in St. Luke's Church, Swindon, Wiltshire, England. d: Jul 1923 in Swindon, Wiltshire, England; age: 77.)
+    3.John H Johnson  (b: abt 1875 in Swindon, Wiltshire, England. d: Deceased.)
+    3.Jane Elizabeth Harper Johnson  (b: 1880 in Swindon, Wiltshire, England. d: Deceased.)
+  2.James Johnson  (b: 30 Mar 1849 in Chippenham, Wiltshire, England. d: 6 Apr 1849 in Chippenham, Wiltshire, England; age: 0.)
+  2.Peter Johnson  (b: 2 Nov 1851 in Trowbridge, Wiltshire, England. d: Jun 1936 in Swindon, Wiltshire, England; age: 84.)
+  + Helen Clark  (b: abt 1854 in Trowbridge, Wiltshire, England. m: 2 Dec 1872 in Christchurch, Wiltshire, England. d: 25 Jul 1935 in Swindon, Wiltshire, England; age: 81.)
+    3.Samuel Johnson  (b: abt 1874 in Trowbridge, Wiltshire, England. d: Dec 1948 in Chippenham, Wiltshire, England; age: 74.)
+    + Mary Wells  (b: abt 1875 in Nk, Wiltshire, England. m: Jul 1902 in Wiltshire, England. d: Deceased.)
+    3.Eliza Johnson  (b: abt 1882 in Devizes, Wiltshire, England. d: Abt 1961 in Salisbury, Wiltshire, England; age: 79.)
  `,
 		want: &DescendantChart{
 			Root: &DescendantPerson{
@@ -911,6 +875,69 @@ var testCases = []struct {
 						},
 					},
 				},
+			},
+		},
+	},
+
+	{
+		name: "tag",
+		in:   "1. A. Brown #tag (b. 24 May 1819, London, England.)",
+		want: &DescendantChart{
+			Root: &DescendantPerson{
+				ID: 1,
+				Headings: []string{
+					"A. Brown",
+				},
+				Details: []string{
+					"b. 24 May 1819, London, England.",
+				},
+				Tags: []string{"tag"},
+			},
+		},
+	},
+
+	{
+		name: "multiple_tag",
+		in:   "1. A. Brown #tag1 #tag2  (b. 24 May 1819, London, England.)",
+		want: &DescendantChart{
+			Root: &DescendantPerson{
+				ID: 1,
+				Headings: []string{
+					"A. Brown",
+				},
+				Details: []string{
+					"b. 24 May 1819, London, England.",
+				},
+				Tags: []string{"tag1", "tag2"},
+			},
+		},
+	},
+
+	{
+		name: "tag_no_detail",
+		in:   "1. A. Brown #tag",
+		want: &DescendantChart{
+			Root: &DescendantPerson{
+				ID: 1,
+				Headings: []string{
+					"A. Brown",
+				},
+				Details: []string{},
+				Tags:    []string{"tag"},
+			},
+		},
+	},
+	{
+		name: "tag_no_detail_space",
+		in:   "1. A. Brown #tag ",
+		want: &DescendantChart{
+			Root: &DescendantPerson{
+				ID: 1,
+				Headings: []string{
+					"A. Brown",
+				},
+				Details: []string{},
+				Tags:    []string{"tag"},
 			},
 		},
 	},

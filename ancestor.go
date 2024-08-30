@@ -364,11 +364,11 @@ func (l *AncestorLayout) newBlurb(id int, texts []string, col int, row int, chil
 
 		HeadingTexts: TextSection{
 			Lines: []string{},
-			Style: &l.opts.HeadingStyle,
+			Style: l.opts.HeadingStyle,
 		},
 		DetailTexts: TextSection{
 			Lines: []string{},
-			Style: &l.opts.DetailStyle,
+			Style: l.opts.DetailStyle,
 		},
 
 		SideHookOffset: (l.opts.HeadingStyle.LineHeight * 2) / 3,

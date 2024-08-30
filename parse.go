@@ -29,29 +29,30 @@ var reLine = regexp.MustCompile(`^(\s*)(\d+|sp|\+)(?:\.)?\s*(.+)$`)
 // Alternatively the prefix may be the two characters 'sp' or the single
 // character '+' which indicates that the person is the spouse of the preceding
 // numbered person with equal or lesser indentation.
-
-// The text after the prefix is the person's name followed by optional details,
-// such as birth, death, marriage, and other life events. The text may wrap
-// onto subsequent lines until a line with a generation number or spouse prefix is
+//
+// The entry text may wrap onto subsequent lines until a line with a generation number or spouse prefix is
 // encountered.
 //
-// The detail text is delimited from the name by one of the following:
-//
-//   - an open paranthesis '('
-//   - one of the following event abbreviations 'b', 'm', 'd', 'bap', 'mar', 'marr'
-//     or 'bur' followed by a dot '.' or colon ':'
-//   - one of the following event keywords 'born', 'baptised', 'married', 'died', 'buried'
-//
-// All text up to the delimiter is to be the name of the person, the remaining text is
-// the detail.
-//
-// The name and the detail are trimmed to remove leading and trailing whitespace. Outer
-// matching parantheses are removed from the detail text before trimming.
+// The text after the prefix is the person's name followed by optional tags and detail text
+// used for additional information such as birth, death, marriage, and other life events.
 //
 // If the SurnameSeparateLine field is true then the name will be parsed to detect
 // a surname, which will be placed on a seperate heading line. If the name ends in
 // one or more words delimted by slashes '/' then these will be used as the surname,
 // otherwise the surname will be taken to be the last whole word after a space.
+//
+// All text up to the first tag delimiter or detail delimiter is to be the name of the person.
+//
+// Tags may be specified by prefixing words with a hash '#'. Multiple tags may be specified.
+// Any tags must be occur between the name and the detail text delimiter.
+//
+// Detail text is delimited by parantheses '(' and ')'. All text between the parantheses is
+// assumed to be the detail text.
+//
+// Any text after the closing detail paranthesis is ignored.
+//
+// The name and the detail text are trimmed to remove leading and trailing whitespace. Outer
+// matching parantheses are removed from the detail text before trimming.
 //
 // Any semicolons ';' within the detail text are treated as line breaks, resulting in
 // multiple lines of text.
@@ -87,7 +88,7 @@ func (p *Parser) Parse(ctx context.Context, r io.Reader) (*DescendantChart, erro
 		matches := reLine.FindStringSubmatch(line)
 		if len(matches) == 4 {
 			// start a new entry
-			headings, details := p.parseDetails(ctx, strings.TrimSpace(matches[3]))
+			headings, details, tags := p.parseDetails(ctx, strings.TrimSpace(matches[3]))
 
 			cur = &entry{
 				lineno: lineno,
@@ -97,6 +98,7 @@ func (p *Parser) Parse(ctx context.Context, r io.Reader) (*DescendantChart, erro
 					ID:       len(entries) + 1,
 					Headings: headings,
 					Details:  details,
+					Tags:     tags,
 				},
 			}
 
@@ -186,17 +188,7 @@ func (p *Parser) Parse(ctx context.Context, r io.Reader) (*DescendantChart, erro
 }
 
 // parseDetails parses a person's details from a line
-func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string) {
-	isDetailStart := func(s string) bool {
-		return strings.HasPrefix(s, "(") ||
-			strings.HasPrefix(s, "b.") ||
-			strings.HasPrefix(s, "m.") ||
-			strings.HasPrefix(s, "d.") ||
-			strings.HasPrefix(s, "b:") ||
-			strings.HasPrefix(s, "m:") ||
-			strings.HasPrefix(s, "d:")
-	}
-
+func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string, []string) {
 	maybeSplitName := func(name string) []string {
 		name = strings.TrimSpace(name)
 		if !p.SurnameSeparateLine {
@@ -217,7 +209,7 @@ func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string
 		return []string{strings.TrimSpace(name[:sp]), name[sp:]}
 	}
 
-	cleanLines := func(name, detail, format string) ([]string, []string) {
+	cleanLines := func(name, detail string) ([]string, []string) {
 		if name != "" && detail == "" {
 			br := strings.IndexByte(name, '(')
 			if br == -1 {
@@ -245,10 +237,13 @@ func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string
 		return maybeSplitName(name), lines
 	}
 
-	format := ""
+	var nametext, detailtext string
+	var headings, details, tags []string
+
 	s = strings.TrimSpace(s)
-	if isDetailStart(s) {
-		return cleanLines("", s, format)
+	if strings.HasPrefix(s, "(") {
+		headings, details = cleanLines("", s)
+		return headings, details, tags
 	}
 
 	pos := 0
@@ -256,21 +251,52 @@ func (p *Parser) parseDetails(ctx context.Context, s string) ([]string, []string
 	for sp != -1 {
 		pos += sp + 1
 
-		if strings.HasPrefix(s[pos:], "[") {
-			cb := strings.IndexByte(s[pos:], ']')
-			if cb != -1 {
-				format = s[pos : pos+cb]
-				pos += cb + 1
-				continue
+		if strings.HasPrefix(s[pos:], "#") {
+			if nametext == "" {
+				nametext = s[:pos-1]
 			}
+			sp = strings.IndexByte(s[pos:], ' ')
+			if sp == -1 {
+				tags = append(tags, s[pos+1:])
+				break
+			}
+			tags = append(tags, s[pos+1:pos+sp])
+			continue
 		}
 
-		if isDetailStart(s[pos:]) {
-			return cleanLines(s[:pos-1], s[pos:], format)
+		if strings.HasPrefix(s[pos:], "(") {
+			if nametext == "" {
+				nametext = s[:pos-1]
+			}
+			open := 1
+			cl := pos + 1
+			for ; cl < len(s); cl++ {
+				if strings.HasPrefix(s[cl:], "(") {
+					open++
+					continue
+				}
+				if strings.HasPrefix(s[cl:], ")") {
+					open--
+					if open == 0 {
+						break
+					}
+				}
+			}
+
+			if open == 0 {
+				detailtext = s[pos+1 : cl]
+			}
+			headings, details = cleanLines(nametext, detailtext)
+			return headings, details, tags
 		}
 
 		sp = strings.IndexByte(s[pos:], ' ')
 	}
 
-	return cleanLines(s, "", format)
+	if nametext == "" {
+		nametext = s
+	}
+
+	headings, details = cleanLines(nametext, "")
+	return headings, details, tags
 }
