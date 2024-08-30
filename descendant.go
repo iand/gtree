@@ -172,9 +172,6 @@ func (l *DescendantLayout) Debug() bool { return l.opts.Debug }
 func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb) *Blurb {
 	b := l.newBlurb(p.ID, p.Headings, p.Details, p.Tags, row, parent)
 
-	var prevSpouseWithChildren *Blurb
-	var lastChildOfPrevFamily *Blurb
-
 	for fi := range p.Families {
 		relText := "="
 		if len(p.Families) > 1 {
@@ -185,67 +182,48 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 
 		var rel, sp *Blurb
 		var famCentre *Blurb
-		var famRightmost *Blurb
+		// var famRightmost *Blurb
 		if p.Families[fi].Other != nil {
 			rel = l.newBlurb(-p.Families[fi].Other.ID, []string{}, relDetails, []string{}, row, nil)
 			rel.CentreText = true
 			famCentre = rel
 
-			// Attempt to keep with spouse relation marker
-			b.KeepWith = append(b.KeepWith, rel)
-			rel.KeepWith = append(rel.KeepWith, b)
+			// Attempt to keep with spouse relation marker if this is the first one
+			if b.KeepTightRight == nil {
+				b.KeepTightRight = rel
+			}
 
 			sp = l.addPerson(p.Families[fi].Other, row, nil)
 			sp.NoShift = true
 
-			sp.KeepWith = append(sp.KeepWith, rel)
-			rel.KeepWith = append(rel.KeepWith, sp)
-			famRightmost = sp
 		} else {
 			famCentre = b
-			famRightmost = b
 		}
 
-		if len(p.Families[fi].Children) > 0 {
-			prevSpouseWithChildren = famRightmost
-			if lastChildOfPrevFamily != nil {
-				// Attempt to keep relation marker right of last child in previous family to avoid merging of descent lines
-				famCentre.KeepRightOf = append(famCentre.KeepRightOf, lastChildOfPrevFamily)
-			}
-
-		}
-
-		var prevChild *Blurb
+		// var prevChild *Blurb
 		for ci := range p.Families[fi].Children {
 			c := l.addPerson(p.Families[fi].Children[ci], row+1, famCentre)
-			if ci == 0 {
-				b.FirstChild = c
-			}
-			if ci == len(p.Families[fi].Children)-1 {
-				b.LastChild = c
-			}
 
 			if rel != nil {
-				// Attempt to keep with relation marker
-				c.KeepWith = append(c.KeepWith, rel)
-				rel.KeepWith = append(rel.KeepWith, c)
 
-				// Attempt to keep relation marker right of first child if there are multiple childen
-				if ci == 0 && len(p.Families[fi].Children) > 1 {
-					rel.KeepRightOf = append(rel.KeepRightOf, c)
+				if ci == 0 {
+					rel.FirstChild = c
 				}
+				if ci == len(p.Families[fi].Children)-1 {
+					rel.LastChild = c
+				}
+
 			} else {
 				// Attempt to keep with parent
-				c.KeepWith = append(c.KeepWith, b)
-				b.KeepWith = append(b.KeepWith, c)
+
+				if ci == 0 {
+					b.FirstChild = c
+				}
+				if ci == len(p.Families[fi].Children)-1 {
+					b.LastChild = c
+				}
 
 			}
-
-			if prevChild != nil {
-				// Attempt to keep with previous child
-				c.KeepWith = append(c.KeepWith, prevChild)
-			}
-			prevChild = c
 
 			// Attempt to keep with grandparent marker, to encourage tree to look centred
 			if b.LeftStop == nil {
@@ -260,14 +238,6 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 				rel.LeftStop = c
 			}
 
-			// Attempt to keep child right of previous spouse with children to avoid merging of descent lines
-			if fi > 0 && prevSpouseWithChildren != nil {
-				c.KeepRightOf = append(c.KeepRightOf, prevSpouseWithChildren)
-			}
-
-			if ci == len(p.Families[fi].Children)-1 {
-				lastChildOfPrevFamily = c
-			}
 		}
 	}
 
@@ -409,6 +379,20 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 	// close up gaps by pulling across any early siblings that don't have children
 	for row := range l.rows {
 		bs := l.rows[row]
+		for i := 0; i < len(bs)-2; i++ {
+			if bs[i].KeepTightRight == nil {
+				continue
+			}
+			if bs[i].KeepTightRight != bs[i+1] {
+				continue
+			}
+			bs[i].LeftPos = bs[i+1].Left() - l.opts.Hspace - bs[i].Width
+
+		}
+	}
+	// close up gaps by pulling across any early siblings that don't have children
+	for row := range l.rows {
+		bs := l.rows[row]
 		for i := len(bs) - 1; i >= 1; i-- {
 			if bs[i-1].FirstChild == nil && bs[i].Parent != nil && bs[i-1].Parent != nil && bs[i].Parent == bs[i-1].Parent && bs[i].Left()-bs[i-1].Right() > l.opts.Hspace {
 				bs[i-1].LeftPos = bs[i].Left() - l.opts.Hspace - bs[i-1].Width
@@ -418,7 +402,7 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 
 	a.centreBlurbs(l)
 
-	// This is top-down layout
+	// Descendant chart is a top-down layout
 	l.connectors = []*Connector{}
 	for _, b := range l.blurbs {
 		if b.Parent != nil {

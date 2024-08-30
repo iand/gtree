@@ -103,21 +103,18 @@ func TestVerticalLayout(t *testing.T) {
 					hasText("Person One").
 					hasNoParent().
 					hasNoLeftNeighbour().
-					hasKeepWith(-2).
+					hasKeepTightRight(-2).
 					inRow(0),
 				blurb(-2).
 					hasText("=").
 					hasNoParent().
 					hasLeftNeighbour(1).
-					hasKeepWith(1).
-					hasKeepWith(2).
 					inRow(0),
 				blurb(2).
 					hasText("Person Two").
 					hasNoParent().
 					hasNoShift().
 					hasLeftNeighbour(-2).
-					hasKeepWith(-2).
 					inRow(0),
 			},
 		},
@@ -129,48 +126,39 @@ func TestVerticalLayout(t *testing.T) {
 					hasText("Person One").
 					hasNoParent().
 					hasNoLeftNeighbour().
-					hasKeepWith(-2).
+					hasKeepTightRight(-2).
 					inRow(0),
 				blurb(-2).
 					hasText("= (1)").
 					hasNoParent().
 					hasLeftNeighbour(1).
-					hasKeepWith(1).
-					hasKeepWith(2).
 					inRow(0),
 				blurb(2).
 					hasText("Person Two").
 					hasNoParent().
 					hasNoShift().
 					hasLeftNeighbour(-2).
-					hasKeepWith(-2).
 					inRow(0),
 				blurb(-3).
 					hasText("= (2)").
 					hasNoParent().
 					hasLeftNeighbour(2).
-					hasKeepWith(1).
-					hasKeepWith(3).
 					inRow(0),
 				blurb(3).
 					hasText("Person Three").
 					hasNoParent().
 					hasNoShift().
 					hasLeftNeighbour(-3).
-					hasKeepWith(-3).
 					inRow(0),
 				blurb(-4).
 					hasText("= (3)").
 					hasNoParent().
 					hasLeftNeighbour(3).
-					hasKeepWith(1).
-					hasKeepWith(4).
 					inRow(0),
 				blurb(4).
 					hasText("Person Four").
 					hasNoShift().
 					hasLeftNeighbour(-4).
-					hasKeepWith(-4).
 					inRow(0),
 			},
 		},
@@ -182,7 +170,7 @@ func TestVerticalLayout(t *testing.T) {
 					hasText("Person One").
 					hasNoParent().
 					hasNoLeftNeighbour().
-					hasKeepWith(-2).
+					hasKeepTightRight(-2).
 					hasLeftStop(3).
 					hasRightStop(4).
 					inRow(0),
@@ -190,28 +178,23 @@ func TestVerticalLayout(t *testing.T) {
 					hasText("=").
 					hasNoParent().
 					hasLeftNeighbour(1).
-					hasKeepWith(1).
-					hasKeepWith(2).
 					inRow(0),
 				blurb(2).
 					hasText("Person Two").
 					hasNoParent().
 					hasNoShift().
 					hasLeftNeighbour(-2).
-					hasKeepWith(-2).
 					hasLeftStop(3).
 					inRow(0),
 				blurb(3).
 					hasText("Person Three").
 					hasParent(-2).
 					hasNoLeftNeighbour().
-					hasKeepWith(-2).
 					inRow(1),
 				blurb(4).
 					hasText("Person Four").
 					inRow(1).
 					hasParent(-2).
-					hasKeepWith(-2).
 					hasLeftNeighbour(3),
 			},
 		},
@@ -381,17 +364,14 @@ func (ba *blurbAsserter) hasRightStop(id int) *blurbAsserter {
 	return ba
 }
 
-func (ba *blurbAsserter) hasKeepWith(id int) *blurbAsserter {
+func (ba *blurbAsserter) hasKeepTightRight(id int) *blurbAsserter {
 	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
-		if len(b.KeepWith) == 0 {
-			t.Errorf("blurb %d: missing keep with %d", ba.id, id)
+		if b.KeepTightRight == nil {
+			t.Errorf("blurb %d: missing keep tight right %d", ba.id, id)
 		} else {
-			for _, v := range b.KeepWith {
-				if v.ID == id {
-					return
-				}
+			if b.KeepTightRight.ID != id {
+				t.Errorf("blurb %d: incorrect keep tight right %d, wanted %d", ba.id, b.KeepTightRight.ID, id)
 			}
-			t.Errorf("blurb %d: missing keep with %d", ba.id, id)
 		}
 	})
 	return ba

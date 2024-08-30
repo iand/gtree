@@ -44,19 +44,18 @@ type Blurb struct {
 	Tags         []string
 
 	// Text          []string
-	CentreText          bool  // true if the text for this blurb is better presented as centred
-	Width               Pixel // Width is the horizontal extent of the Blurb
-	AbsolutePositioning bool  // when true, the position of the blurb is controlled by TopPos and LeftPos, otherwise it is calculated relative to neighbours
-	TopPos              Pixel // TopPos is the absolute vertical position of the upper edge of the Blurb
-	LeftPos             Pixel // LeftPos is the absolute horizontal position of the left edge of the Blurb
-	Height              Pixel // Height is the vertical extent of the Blurb
-	Col                 int   // column the blurb appears in for layouts that use columns
-	Row                 int   // row the blurb appears in for layouts that use rows
-	LeftPad             Pixel // required padding to left of blurb to separate families
-	LeftShift           Pixel // optional padding that shifts blurb to right for alignment
-	NoShift             bool  // when true the left shift will not be changed
-	KeepWith            []*Blurb
-	KeepRightOf         []*Blurb
+	CentreText          bool   // true if the text for this blurb is better presented as centred
+	Width               Pixel  // Width is the horizontal extent of the Blurb
+	AbsolutePositioning bool   // when true, the position of the blurb is controlled by TopPos and LeftPos, otherwise it is calculated relative to neighbours
+	TopPos              Pixel  // TopPos is the absolute vertical position of the upper edge of the Blurb
+	LeftPos             Pixel  // LeftPos is the absolute horizontal position of the left edge of the Blurb
+	Height              Pixel  // Height is the vertical extent of the Blurb
+	Col                 int    // column the blurb appears in for layouts that use columns
+	Row                 int    // row the blurb appears in for layouts that use rows
+	LeftPad             Pixel  // required padding to left of blurb to separate families
+	LeftShift           Pixel  // optional padding that shifts blurb to right for alignment
+	NoShift             bool   // when true the left shift will not be changed
+	KeepTightRight      *Blurb // the blurb to the right that this blurb should keep as close as possible to
 	LeftNeighbour       *Blurb // the blurb to the left of this one, when non-nil will be used for horizontal positioning
 	Parent              *Blurb
 	LeftStop            *Blurb // the blurb whose center must not be passed when shifting left
