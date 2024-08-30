@@ -53,7 +53,6 @@ type Blurb struct {
 	Col                 int    // column the blurb appears in for layouts that use columns
 	Row                 int    // row the blurb appears in for layouts that use rows
 	LeftPad             Pixel  // required padding to left of blurb to separate families
-	LeftShift           Pixel  // optional padding that shifts blurb to right for alignment
 	NoShift             bool   // when true the left shift will not be changed
 	KeepTightRight      *Blurb // the blurb to the right that this blurb should keep as close as possible to
 	LeftNeighbour       *Blurb // the blurb to the left of this one, when non-nil will be used for horizontal positioning
@@ -75,7 +74,6 @@ func (b *Blurb) X() Pixel {
 		left = b.LeftNeighbour.Right()
 	}
 	left += b.LeftPad
-	left += b.LeftShift
 	return left + b.Width/2
 }
 
