@@ -58,10 +58,8 @@ type Blurb struct {
 	KeepTightRight      *Blurb // the blurb to the right that this blurb should keep as close as possible to
 	LeftNeighbour       *Blurb // the blurb to the left of this one, when non-nil will be used for horizontal positioning
 	Parent              *Blurb
-	LeftStop            *Blurb // the blurb whose center must not be passed when shifting left
-	RightStop           *Blurb // the blurb whose center must not be passed when shifting right
-	TopHookOffset       Pixel  // TopHookOffset is the offset from the left of the blurb where any dropped connecting line should finish (ensures it is within the bounds of the name, even if subsequent detail lines are longer)
-	SideHookOffset      Pixel  // SideHookOffset is the offset from the top of the blurb where any connecting line should finish
+	TopHookOffset       Pixel // TopHookOffset is the offset from the left of the blurb where any dropped connecting line should finish (ensures it is within the bounds of the name, even if subsequent detail lines are longer)
+	SideHookOffset      Pixel // SideHookOffset is the offset from the top of the blurb where any connecting line should finish
 
 	FirstChild *Blurb
 	LastChild  *Blurb

@@ -225,19 +225,6 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 
 			}
 
-			// Attempt to keep with grandparent marker, to encourage tree to look centred
-			if b.LeftStop == nil {
-				b.LeftStop = c
-			}
-			b.RightStop = c
-
-			if sp != nil && sp.LeftStop == nil {
-				sp.LeftStop = c
-			}
-			if rel != nil && rel.LeftStop == nil {
-				rel.LeftStop = c
-			}
-
 		}
 	}
 

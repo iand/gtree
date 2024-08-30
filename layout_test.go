@@ -171,8 +171,6 @@ func TestVerticalLayout(t *testing.T) {
 					hasNoParent().
 					hasNoLeftNeighbour().
 					hasKeepTightRight(-2).
-					hasLeftStop(3).
-					hasRightStop(4).
 					inRow(0),
 				blurb(-2).
 					hasText("=").
@@ -184,7 +182,6 @@ func TestVerticalLayout(t *testing.T) {
 					hasNoParent().
 					hasNoShift().
 					hasLeftNeighbour(-2).
-					hasLeftStop(3).
 					inRow(0),
 				blurb(3).
 					hasText("Person Three").
@@ -338,31 +335,31 @@ func (ba *blurbAsserter) hasNoShift() *blurbAsserter {
 	return ba
 }
 
-func (ba *blurbAsserter) hasLeftStop(id int) *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
-		if b.LeftStop == nil {
-			t.Errorf("blurb %d: got no left stop, wanted %d", ba.id, id)
-		} else {
-			if b.LeftStop.ID != id {
-				t.Errorf("blurb %d: got left stop %d, wanted %d", ba.id, b.LeftStop.ID, id)
-			}
-		}
-	})
-	return ba
-}
+// func (ba *blurbAsserter) hasLeftStop(id int) *blurbAsserter {
+// 	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+// 		if b.LeftStop == nil {
+// 			t.Errorf("blurb %d: got no left stop, wanted %d", ba.id, id)
+// 		} else {
+// 			if b.LeftStop.ID != id {
+// 				t.Errorf("blurb %d: got left stop %d, wanted %d", ba.id, b.LeftStop.ID, id)
+// 			}
+// 		}
+// 	})
+// 	return ba
+// }
 
-func (ba *blurbAsserter) hasRightStop(id int) *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
-		if b.RightStop == nil {
-			t.Errorf("blurb %d: got no right stop, wanted %d", ba.id, id)
-		} else {
-			if b.RightStop.ID != id {
-				t.Errorf("blurb %d: got right stop %d, wanted %d", ba.id, b.RightStop.ID, id)
-			}
-		}
-	})
-	return ba
-}
+// func (ba *blurbAsserter) hasRightStop(id int) *blurbAsserter {
+// 	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+// 		if b.RightStop == nil {
+// 			t.Errorf("blurb %d: got no right stop, wanted %d", ba.id, id)
+// 		} else {
+// 			if b.RightStop.ID != id {
+// 				t.Errorf("blurb %d: got right stop %d, wanted %d", ba.id, b.RightStop.ID, id)
+// 			}
+// 		}
+// 	})
+// 	return ba
+// }
 
 func (ba *blurbAsserter) hasKeepTightRight(id int) *blurbAsserter {
 	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
