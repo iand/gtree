@@ -200,7 +200,10 @@ func TestVerticalLayout(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			l := tc.in.Layout(nil)
+			l, err := tc.in.Layout(nil)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
 			for _, a := range tc.assertions {
 				a.assert(t, l)

@@ -378,15 +378,15 @@ func (l *AncestorLayout) newBlurb(id int, texts []string, col int, row int, chil
 	if len(texts) > 0 {
 		b.HeadingTexts.Lines = append(b.HeadingTexts.Lines, texts[0])
 		b.Height = b.HeadingTexts.Style.LineHeight
-		b.Width = textWidth([]rune(b.HeadingTexts.Lines[0]), b.HeadingTexts.Style.FontSize)
+		b.Width = b.HeadingTexts.Style.MeasureWidth(b.HeadingTexts.Lines[0])
 
 		if len(texts) > 1 {
 
-			b.DetailTexts.Lines = wrapText(texts[1:], l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
+			b.DetailTexts.Lines = wrapText(texts[1:], l.opts.DetailWrapWidth, l.opts.DetailStyle)
 			b.Height += b.DetailTexts.Style.LineHeight * Pixel(len(b.DetailTexts.Lines))
 
 			for i := range b.DetailTexts.Lines {
-				wl := textWidth([]rune(b.DetailTexts.Lines[i]), b.DetailTexts.Style.FontSize)
+				wl := b.DetailTexts.Style.MeasureWidth(b.DetailTexts.Lines[i])
 				if wl > b.Width {
 					b.Width = wl
 				}

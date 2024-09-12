@@ -55,10 +55,10 @@ func SVG(lay Layout) (string, error) {
 		}
 		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\">\n", textx, length(b.TopPos), textAnchor)
 		for _, line := range b.HeadingTexts.Lines {
-			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" fill=\"%s\">%s</tspan>\n", textx, length(b.HeadingTexts.Style.LineHeight), b.HeadingTexts.Style.FontSize, b.HeadingTexts.Style.Color, line)
+			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" font-family=\"%s\" fill=\"%s\">%s</tspan>\n", textx, length(b.HeadingTexts.Style.LineHeight), b.HeadingTexts.Style.FontSize, b.HeadingTexts.Style.FontFamily, b.HeadingTexts.Style.Color, line)
 		}
 		for _, line := range b.DetailTexts.Lines {
-			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" fill=\"%s\">%s</tspan>\n", textx, length(b.DetailTexts.Style.LineHeight), b.DetailTexts.Style.FontSize, b.DetailTexts.Style.Color, line)
+			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" font-family=\"%s\" fill=\"%s\">%s</tspan>\n", textx, length(b.DetailTexts.Style.LineHeight), b.DetailTexts.Style.FontSize, b.DetailTexts.Style.FontFamily, b.DetailTexts.Style.Color, line)
 		}
 		fmt.Fprintf(buf, "</text>\n")
 	}

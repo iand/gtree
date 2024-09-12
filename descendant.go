@@ -43,10 +43,10 @@ type LayoutOptions struct {
 	ChildDrop  Pixel // ChildDrop is the length of the line drawn from the children group line to a child.
 	LineGap    Pixel // LineGap is the distance between a connecting line and any text.
 
-	TitleStyle   TextStyle // TitleStyle is the style of the font to use for the title of the chart.
-	NoteStyle    TextStyle // NoteStyle is the style of the font to use for the notes of the chart.
-	HeadingStyle TextStyle // HeadingStyle is the style of the font to use for the first line of each blurb.
-	DetailStyle  TextStyle // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
+	TitleStyle   TextStyleOption // TitleStyle is the style of the font to use for the title of the chart.
+	NoteStyle    TextStyleOption // NoteStyle is the style of the font to use for the notes of the chart.
+	HeadingStyle TextStyleOption // HeadingStyle is the style of the font to use for the first line of each blurb.
+	DetailStyle  TextStyleOption // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
 
 	DetailWrapWidth Pixel // DetailWrapWidth is the maximum width of detail text before wrapping to a new line.
 }
@@ -62,22 +62,28 @@ func DefaultLayoutOptions() *LayoutOptions {
 		FamilyDrop:      48,
 		ChildDrop:       16,
 		LineGap:         8,
-		TitleStyle: TextStyle{
+		TitleStyle: TextStyleOption{
+			FontNames: []string{"Superclarendon", "Bookman Old Style", "URW Bookman", "URW Bookman L", "Georgia Pro", "Georgia", "serif"},
+			// FontNames: []string{"Inter", "Roboto", "Helvetica Neue", "Arial Nova", "Nimbus Sans", "Arial", "sans-serif"},
+			// FontNames:  []string{"arial"},
 			FontSize:   40,
 			LineHeight: 42,
 			Color:      "#000",
 		},
-		NoteStyle: TextStyle{
+		NoteStyle: TextStyleOption{
+			FontNames:  []string{"Superclarendon", "Bookman Old Style", "URW Bookman", "URW Bookman L", "Georgia Pro", "Georgia", "serif"},
 			FontSize:   20,
 			LineHeight: 22,
 			Color:      "#000",
 		},
-		HeadingStyle: TextStyle{
+		HeadingStyle: TextStyleOption{
+			FontNames:  []string{"Superclarendon", "Bookman Old Style", "URW Bookman", "URW Bookman L", "Georgia Pro", "Georgia", "serif"},
 			FontSize:   20,
 			LineHeight: 22,
 			Color:      "#000",
 		},
-		DetailStyle: TextStyle{
+		DetailStyle: TextStyleOption{
+			FontNames:  []string{"Superclarendon", "Bookman Old Style", "URW Bookman", "URW Bookman L", "Georgia Pro", "Georgia", "serif"},
 			FontSize:   16,
 			LineHeight: 18,
 			Color:      "#000",
@@ -85,8 +91,15 @@ func DefaultLayoutOptions() *LayoutOptions {
 	}
 }
 
+type TextStyleOption struct {
+	FontNames  []string // list of font names in priority order
+	FontSize   Pixel    // FontSize is the size of the font to use for the text of each blurb.
+	Color      string   // Color is the color of the text. The default is black #000000.
+	LineHeight Pixel    // TODO: remove
+}
+
 // Layout generates the layout for the descendant chart based on the provided options.
-func (ch *DescendantChart) Layout(opts *LayoutOptions) *DescendantLayout {
+func (ch *DescendantChart) Layout(opts *LayoutOptions) (*DescendantLayout, error) {
 	if opts == nil {
 		opts = DefaultLayoutOptions()
 	}
@@ -98,12 +111,36 @@ func (ch *DescendantChart) Layout(opts *LayoutOptions) *DescendantLayout {
 	l.blurbs = make(map[int]*Blurb)
 	l.generationDrop = l.opts.LineWidth + l.opts.LineGap + l.opts.LineGap + l.opts.ChildDrop + l.opts.FamilyDrop
 
+	ts, err := NewTextStyle(opts.TitleStyle)
+	if err != nil {
+		return nil, fmt.Errorf("setup default title style: %v", err)
+	}
+	l.titleStyle = ts
+
+	ns, err := NewTextStyle(opts.NoteStyle)
+	if err != nil {
+		return nil, fmt.Errorf("setup default note style: %v", err)
+	}
+	l.noteStyle = ns
+
+	hs, err := NewTextStyle(opts.HeadingStyle)
+	if err != nil {
+		return nil, fmt.Errorf("setup default heading style: %v", err)
+	}
+	l.headingStyle = hs
+
+	ds, err := NewTextStyle(opts.DetailStyle)
+	if err != nil {
+		return nil, fmt.Errorf("setup default detail style: %v", err)
+	}
+	l.detailStyle = ds
+
 	l.addPerson(ch.Root, 0, nil)
 
 	a := new(SpreadingDescendantArranger)
 	a.Arrange(l)
 
-	return l
+	return l, nil
 }
 
 // DescendantLayout represents the layout of a descendant chart, including dimensions and layout options.
@@ -116,9 +153,13 @@ type DescendantLayout struct {
 
 	opts LayoutOptions
 
-	blurbs     map[int]*Blurb
-	connectors []*Connector
-	rows       [][]*Blurb
+	blurbs       map[int]*Blurb
+	connectors   []*Connector
+	rows         [][]*Blurb
+	titleStyle   TextStyle
+	noteStyle    TextStyle
+	headingStyle TextStyle
+	detailStyle  TextStyle
 }
 
 // Width returns the width of the layout.
@@ -134,7 +175,7 @@ func (l *DescendantLayout) Margin() Pixel { return l.opts.Margin }
 func (l *DescendantLayout) Title() TextElement {
 	return TextElement{
 		Text:  l.title,
-		Style: l.opts.TitleStyle,
+		Style: l.titleStyle,
 	}
 }
 
@@ -145,7 +186,7 @@ func (l *DescendantLayout) Notes() []TextElement {
 	for i := range l.notes {
 		tes[i] = TextElement{
 			Text:  l.notes[i],
-			Style: l.opts.NoteStyle,
+			Style: l.noteStyle,
 		}
 	}
 	return tes
@@ -233,7 +274,7 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 
 // newBlurb creates a new blurb for the given person or family at the specified row.
 func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, tags []string, row int, parent *Blurb) *Blurb {
-	texts = wrapText(texts, l.opts.DetailWrapWidth, l.opts.DetailStyle.FontSize)
+	texts = wrapText(texts, l.opts.DetailWrapWidth, l.detailStyle)
 	b := &Blurb{
 		ID:             id,
 		Row:            row,
@@ -242,11 +283,11 @@ func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, t
 		SideHookOffset: l.opts.HeadingStyle.LineHeight / 2,
 		HeadingTexts: TextSection{
 			Lines: []string{},
-			Style: l.opts.HeadingStyle,
+			Style: l.headingStyle,
 		},
 		DetailTexts: TextSection{
 			Lines: []string{},
-			Style: l.opts.DetailStyle,
+			Style: l.detailStyle,
 		},
 		Tags: tags,
 	}
@@ -266,13 +307,13 @@ func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, t
 	}
 
 	for i := range b.HeadingTexts.Lines {
-		wl := textWidth([]rune(b.HeadingTexts.Lines[i]), b.HeadingTexts.Style.FontSize)
+		wl := b.HeadingTexts.Style.MeasureWidth(b.HeadingTexts.Lines[i])
 		if wl > b.Width {
 			b.Width = wl
 		}
 	}
 	for i := range b.DetailTexts.Lines {
-		wl := textWidth([]rune(b.DetailTexts.Lines[i]), b.DetailTexts.Style.FontSize)
+		wl := b.DetailTexts.Style.MeasureWidth(b.DetailTexts.Lines[i])
 		if wl > b.Width {
 			b.Width = wl
 		}
@@ -461,7 +502,7 @@ func (a *SpreadingDescendantArranger) centreBlurbs(l *DescendantLayout) {
 	minY -= l.opts.Margin
 	maxY += l.opts.Margin
 
-	th, _ := titleDimensions(l.title, l.notes, l.opts.TitleStyle, l.opts.NoteStyle)
+	th, _ := titleDimensions(l.title, l.notes, l.titleStyle, l.noteStyle)
 	minY -= th
 
 	for _, bs := range l.rows {
