@@ -3,6 +3,7 @@ package gtree
 import (
 	"bytes"
 	"fmt"
+	"html"
 )
 
 // SVG generates an SVG (Scalable Vector Graphics) representation of the provided layout.
@@ -30,13 +31,13 @@ func SVG(lay Layout) (string, error) {
 	var y Pixel
 	title := lay.Title()
 	if title.Text != "" {
-		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"alphabetic\" text-anchor=\"start\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", length(lay.Margin()), length(lay.Margin()+title.Style.LineHeight), title.Style.FontSize, title.Text)
+		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"alphabetic\" text-anchor=\"start\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", length(lay.Margin()), length(lay.Margin()+title.Style.LineHeight), title.Style.FontSize, html.EscapeString(title.Text))
 		y += title.Style.LineHeight
 	}
 
 	notes := lay.Notes()
 	for i := range notes {
-		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"alphabetic\" text-anchor=\"start\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", length(lay.Margin()), length(lay.Margin()+notes[i].Style.LineHeight+y), notes[i].Style.FontSize, notes[i].Text)
+		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"alphabetic\" text-anchor=\"start\" font-size=\"%dpx\" letter-spacing=\"0\">%s</text>\n", length(lay.Margin()), length(lay.Margin()+notes[i].Style.LineHeight+y), notes[i].Style.FontSize, html.EscapeString(notes[i].Text))
 		y += notes[i].Style.LineHeight
 	}
 
@@ -55,10 +56,10 @@ func SVG(lay Layout) (string, error) {
 		}
 		fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\">\n", textx, length(b.TopPos), textAnchor)
 		for _, line := range b.HeadingTexts.Lines {
-			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" font-family=\"%s\" fill=\"%s\">%s</tspan>\n", textx, length(b.HeadingTexts.Style.LineHeight), b.HeadingTexts.Style.FontSize, b.HeadingTexts.Style.FontFamily, b.HeadingTexts.Style.Color, line)
+			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" font-family=\"%s\" fill=\"%s\">%s</tspan>\n", textx, length(b.HeadingTexts.Style.LineHeight), b.HeadingTexts.Style.FontSize, b.HeadingTexts.Style.FontFamily, b.HeadingTexts.Style.Color, html.EscapeString(line))
 		}
 		for _, line := range b.DetailTexts.Lines {
-			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" font-family=\"%s\" fill=\"%s\">%s</tspan>\n", textx, length(b.DetailTexts.Style.LineHeight), b.DetailTexts.Style.FontSize, b.DetailTexts.Style.FontFamily, b.DetailTexts.Style.Color, line)
+			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" font-family=\"%s\" fill=\"%s\">%s</tspan>\n", textx, length(b.DetailTexts.Style.LineHeight), b.DetailTexts.Style.FontSize, b.DetailTexts.Style.FontFamily, b.DetailTexts.Style.Color, html.EscapeString(line))
 		}
 		fmt.Fprintf(buf, "</text>\n")
 	}

@@ -63,9 +63,7 @@ func DefaultLayoutOptions() *LayoutOptions {
 		ChildDrop:       16,
 		LineGap:         8,
 		TitleStyle: TextStyleOption{
-			FontNames: []string{"Superclarendon", "Bookman Old Style", "URW Bookman", "URW Bookman L", "Georgia Pro", "Georgia", "serif"},
-			// FontNames: []string{"Inter", "Roboto", "Helvetica Neue", "Arial Nova", "Nimbus Sans", "Arial", "sans-serif"},
-			// FontNames:  []string{"arial"},
+			FontNames:  []string{"Superclarendon", "Bookman Old Style", "URW Bookman", "URW Bookman L", "Georgia Pro", "Georgia", "serif"},
 			FontSize:   40,
 			LineHeight: 42,
 			Color:      "#000",
@@ -273,8 +271,8 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 }
 
 // newBlurb creates a new blurb for the given person or family at the specified row.
-func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, tags []string, row int, parent *Blurb) *Blurb {
-	texts = wrapText(texts, l.opts.DetailWrapWidth, l.detailStyle)
+func (l *DescendantLayout) newBlurb(id int, headings []string, details []string, tags []string, row int, parent *Blurb) *Blurb {
+	details = wrapText(details, l.opts.DetailWrapWidth, l.detailStyle)
 	b := &Blurb{
 		ID:             id,
 		Row:            row,
@@ -296,13 +294,13 @@ func (l *DescendantLayout) newBlurb(id int, headings []string, texts []string, t
 		b.HeadingTexts.Lines = headings
 		b.Height = b.HeadingTexts.Style.LineHeight * Pixel(len(b.HeadingTexts.Lines))
 	} else {
-		b.HeadingTexts.Lines = append(b.HeadingTexts.Lines, texts[0])
+		b.HeadingTexts.Lines = append(b.HeadingTexts.Lines, details[0])
 		b.Height = b.HeadingTexts.Style.LineHeight
-		texts = texts[1:]
+		details = details[1:]
 	}
 
-	if len(texts) > 0 {
-		b.DetailTexts.Lines = texts
+	if len(details) > 0 {
+		b.DetailTexts.Lines = details
 		b.Height += b.DetailTexts.Style.LineHeight * Pixel(len(b.DetailTexts.Lines))
 	}
 
@@ -507,10 +505,15 @@ func (a *SpreadingDescendantArranger) centreBlurbs(l *DescendantLayout) {
 
 	for _, bs := range l.rows {
 		for i := range bs {
-			if i == 0 {
-				bs[i].LeftPad -= minX
+			if bs[i].AbsolutePositioning {
+				bs[i].LeftPos -= minX
+				bs[i].TopPos -= minY
+			} else {
+				if i == 0 {
+					bs[i].LeftPad -= minX
+				}
+				bs[i].TopPos -= minY
 			}
-			bs[i].TopPos -= minY
 		}
 	}
 

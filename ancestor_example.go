@@ -54,11 +54,16 @@ func main() {
 
 	opts := gtree.DefaultAncestorLayoutOptions()
 	opts.Debug = *debugFlag
-	lay := ch.Layout(opts)
+	lay, err := ch.Layout(opts)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
 	s, err := gtree.SVG(lay)
 	if err != nil {
 		fmt.Println(err.Error())
+		return
 	}
 	fmt.Println(s)
 }
