@@ -3,6 +3,7 @@ package gtree
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 )
 
 // AncestorChart represents a horizontal ancestor chart, where the root person is
@@ -30,16 +31,16 @@ type AncestorLayoutOptions struct {
 
 	LineWidth Pixel // width of any drawn lines
 	Margin    Pixel // margin to add to entire drawing
-	Hspace    Pixel // the horizontal space to leave between blurbs in different generations
-	Vspace    Pixel // the vertical space to leave between blurbs in the same generation
+	Hspace    Pixel // the horizontal space to leave between nodes in different generations
+	Vspace    Pixel // the vertical space to leave between nodes in the same generation
 	LineGap   Pixel // the distance to leave between a connecting line and any text
 
 	HookLength Pixel // the length of the line drawn from the parent or a child to the vertical line that joins them
 
 	TitleStyle   TextStyleOption // TitleStyle is the style of the font to use for the title of the chart.
 	NoteStyle    TextStyleOption // NoteStyle is the style of the font to use for the notes of the chart.
-	HeadingStyle TextStyleOption // HeadingStyle is the style of the font to use for the first line of each blurb.
-	DetailStyle  TextStyleOption // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
+	HeadingStyle TextStyleOption // HeadingStyle is the style of the font to use for the first line of each node.
+	DetailStyle  TextStyleOption // DetailStyle is the style of the font to use for the subsequent lines of each node after the first.
 
 	DetailWrapWidth Pixel // DetailWrapWidth is the maximum width of detail text before wrapping to a new line.
 }
@@ -93,7 +94,7 @@ func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) (*AncestorLayout, e
 	l.opts = *opts
 	l.title = ch.Title
 	l.notes = ch.Notes
-	l.blurbs = make(map[int]*Blurb)
+	l.nodes = make(map[int]*AlignedNode)
 
 	ts, err := NewTextStyle(opts.TitleStyle)
 	if err != nil {
@@ -142,25 +143,25 @@ func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) (*AncestorLayout, e
 	for col := range l.grid {
 		pop := colPopulation(col)
 
-		largestBlurbHeight := Pixel(0)
-		largestBlurbWidth := Pixel(0)
+		largestNodeHeight := Pixel(0)
+		largestNodeWidth := Pixel(0)
 		for _, b := range l.grid[col] {
 			if b == nil {
 				continue
 			}
-			if b.Height > largestBlurbHeight {
-				largestBlurbHeight = b.Height
+			if b.Height > largestNodeHeight {
+				largestNodeHeight = b.Height
 			}
-			if b.Width > largestBlurbWidth {
-				largestBlurbWidth = b.Width
+			if b.Width > largestNodeWidth {
+				largestNodeWidth = b.Width
 			}
 		}
-		colWidths[col] = largestBlurbWidth + l.opts.Hspace*2
+		colWidths[col] = largestNodeWidth + l.opts.Hspace*2
 
-		// Give each blurb equal vertical space
-		colHeight := Pixel(pop) * largestBlurbHeight
+		// Give each node equal vertical space
+		colHeight := Pixel(pop) * largestNodeHeight
 
-		// Add VSpace between each mother and father blurb
+		// Add VSpace between each mother and father node
 		if pop > 1 {
 			colHeight += Pixel(pop) / 2 * l.opts.Vspace
 		}
@@ -183,7 +184,7 @@ func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) (*AncestorLayout, e
 		}
 	}
 
-	// reposition blurbs
+	// reposition nodes
 
 	lowestTopPos := Pixel(200000)
 	x := l.opts.Margin
@@ -197,7 +198,7 @@ func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) (*AncestorLayout, e
 			}
 			b.LeftPos = x
 
-			// centre the blurb in the division
+			// centre the node in the division
 			y0 := l.opts.Margin + spacing*Pixel(row)
 			centre := y0 + spacing/2
 			b.TopPos = centre - b.Height/2
@@ -256,27 +257,35 @@ func (ch *AncestorChart) Layout(opts *AncestorLayoutOptions) (*AncestorLayout, e
 			} else {
 				childIdx = (row - 1) / 2
 			}
-			childBlurb := l.grid[col-1][childIdx]
+			childNode := l.grid[col-1][childIdx]
 
 			// draw hook projecting from left edge of parent
 			l.connectors = append(l.connectors, &Connector{
 				Points: []Point{
-					// Start just to left of blurb
+					// Start just to left of node
 					{X: b.LeftPos - l.opts.LineGap, Y: b.SideHookY()},
 
 					// Move left by HookLength
 					{X: b.LeftPos - l.opts.LineGap - l.opts.HookLength, Y: b.SideHookY()},
 
 					// Move vertically to hook of child
-					{X: b.LeftPos - l.opts.LineGap - l.opts.HookLength, Y: childBlurb.SideHookY()},
+					{X: b.LeftPos - l.opts.LineGap - l.opts.HookLength, Y: childNode.SideHookY()},
 
 					// Move left by HookLength
-					{X: b.LeftPos - l.opts.LineGap - l.opts.HookLength - l.opts.Hspace, Y: childBlurb.SideHookY()},
+					{X: b.LeftPos - l.opts.LineGap - l.opts.HookLength - l.opts.Hspace, Y: childNode.SideHookY()},
 				},
 			})
 
 		}
 	}
+
+	l.legend = LeftAlignedLegend(
+		Point{X: l.opts.Margin, Y: l.opts.Margin},
+		l.title,
+		l.titleStyle,
+		l.notes,
+		l.noteStyle)
+
 	return l, nil
 }
 
@@ -307,8 +316,8 @@ type AncestorLayout struct {
 	height     Pixel
 	title      string
 	notes      []string
-	blurbs     map[int]*Blurb
-	grid       [][]*Blurb // col, row
+	nodes      map[int]*AlignedNode
+	grid       [][]*AlignedNode // col, row
 	rows       int
 	connectors []*Connector
 
@@ -316,7 +325,11 @@ type AncestorLayout struct {
 	noteStyle    TextStyle
 	headingStyle TextStyle
 	detailStyle  TextStyle
+
+	legend *Blurb
 }
+
+var _ Layout = (*AncestorLayout)(nil)
 
 // Width returns the width of the layout.
 func (l *AncestorLayout) Width() Pixel { return l.width }
@@ -327,32 +340,16 @@ func (l *AncestorLayout) Height() Pixel { return l.height }
 // Margin returns the margin of the layout.
 func (l *AncestorLayout) Margin() Pixel { return l.opts.Margin }
 
-// Title returns the title element of the layout.
-func (l *AncestorLayout) Title() TextElement {
-	return TextElement{
-		Text:  l.title,
-		Style: l.titleStyle,
-	}
-}
-
-// Notes returns the notes elements of the layout.
-func (l *AncestorLayout) Notes() []TextElement {
-	tes := make([]TextElement, len(l.notes))
-
-	for i := range l.notes {
-		tes[i] = TextElement{
-			Text:  l.notes[i],
-			Style: l.noteStyle,
-		}
-	}
-	return tes
+// Legend returns the legend element of the layout.
+func (l *AncestorLayout) Legend() *Blurb {
+	return l.legend
 }
 
 // Blurbs returns all the blurbs in the layout.
 func (l *AncestorLayout) Blurbs() []*Blurb {
-	bs := make([]*Blurb, 0, len(l.blurbs))
-	for _, b := range l.blurbs {
-		bs = append(bs, b)
+	bs := make([]*Blurb, 0, len(l.nodes))
+	for _, n := range l.nodes {
+		bs = append(bs, n.Blurb())
 	}
 	return bs
 }
@@ -366,11 +363,11 @@ func (l *AncestorLayout) Connectors() []*Connector {
 func (l *AncestorLayout) Debug() bool { return l.opts.Debug }
 
 // addPerson adds a person and their parents to the layout at the specified column and row.
-func (l *AncestorLayout) addPerson(p *AncestorPerson, col int, row int, child *Blurb) *Blurb {
-	b := l.newBlurb(p.ID, p.Headings, p.Details, col, row, child)
+func (l *AncestorLayout) addPerson(p *AncestorPerson, col int, row int, child *AlignedNode) *AlignedNode {
+	b := l.newNode(p.ID, p.Headings, p.Details, col, row, child)
 
 	for len(l.grid) <= col {
-		l.grid = append(l.grid, make([]*Blurb, colPopulation(len(l.grid)+1)))
+		l.grid = append(l.grid, make([]*AlignedNode, colPopulation(len(l.grid)+1)))
 	}
 
 	l.grid[col][row] = b
@@ -388,10 +385,10 @@ func (l *AncestorLayout) addPerson(p *AncestorPerson, col int, row int, child *B
 	return b
 }
 
-// newBlurb creates a new blurb for the given person at the specified column and row.
-func (l *AncestorLayout) newBlurb(id int, headings []string, details []string, col int, row int, child *Blurb) *Blurb {
+// newNode creates a new node for the given person at the specified column and row.
+func (l *AncestorLayout) newNode(id int, headings []string, details []string, col int, row int, child *AlignedNode) *AlignedNode {
 	// texts = l.wrapTexts(texts)
-	b := &Blurb{
+	b := &AlignedNode{
 		ID:                  id,
 		Col:                 col,
 		Row:                 col,
@@ -437,7 +434,7 @@ func (l *AncestorLayout) newBlurb(id int, headings []string, details []string, c
 		}
 	}
 
-	l.blurbs[id] = b
+	l.nodes[id] = b
 
 	return b
 }
@@ -445,4 +442,170 @@ func (l *AncestorLayout) newBlurb(id int, headings []string, details []string, c
 // colPopulation returns the expected population of each column
 func colPopulation(col int) int {
 	return 1 << col
+}
+
+// AlignedNode represents a visual element in the layout, typically used to display information about a person in a chart.
+// It includes various properties to control its positioning, text content, and relationships with other blurbs.
+type AlignedNode struct {
+	ID           int
+	HeadingTexts TextSection
+	DetailTexts  TextSection
+	Tags         []string
+
+	// Text          []string
+	CentreText          bool         // true if the text for this blurb is better presented as centred
+	Width               Pixel        // Width is the horizontal extent of the Blurb
+	AbsolutePositioning bool         // when true, the position of the blurb is controlled by TopPos and LeftPos, otherwise it is calculated relative to neighbours
+	TopPos              Pixel        // TopPos is the absolute vertical position of the upper edge of the Blurb
+	LeftPos             Pixel        // LeftPos is the absolute horizontal position of the left edge of the Blurb
+	Height              Pixel        // Height is the vertical extent of the Blurb
+	Col                 int          // column the blurb appears in for layouts that use columns
+	Row                 int          // row the blurb appears in for layouts that use rows
+	LeftPad             Pixel        // required padding to left of blurb to separate families
+	NoShift             bool         // when true the left shift will not be changed
+	KeepTightRight      *AlignedNode // the blurb to the right that this blurb should keep as close as possible to
+	LeftNeighbour       *AlignedNode // the blurb to the left of this one, when non-nil will be used for horizontal positioning
+	Parent              *AlignedNode
+	TopHookOffset       Pixel // TopHookOffset is the offset from the left of the blurb where any dropped connecting line should finish (ensures it is within the bounds of the name, even if subsequent detail lines are longer)
+	SideHookOffset      Pixel // SideHookOffset is the offset from the top of the blurb where any connecting line should finish
+
+	FirstChild *AlignedNode
+	LastChild  *AlignedNode
+}
+
+func (n *AlignedNode) Blurb() *Blurb {
+	b := &Blurb{
+		Texts: []TextSection{
+			n.HeadingTexts,
+			n.DetailTexts,
+		},
+		// HeadingTexts: n.HeadingTexts,
+		// DetailTexts:  n.DetailTexts,
+		Alignment: AlignmentLeft,
+	}
+	if n.CentreText {
+		b.Alignment = AlignmentCenter
+	}
+
+	b.X = n.X()
+	b.Y = n.Y()
+	b.Width = b.Width
+	b.Height = n.Height
+
+	return b
+}
+
+// X returns the horizontal position of the centre of the Blurb
+func (b *AlignedNode) X() Pixel {
+	if b.AbsolutePositioning {
+		return b.LeftPos + b.Width/2
+	}
+	left := Pixel(0)
+	if b.LeftNeighbour != nil {
+		left = b.LeftNeighbour.Right()
+	}
+	left += b.LeftPad
+	return left + b.Width/2
+}
+
+// Y returns the vertical position of the centre of the Blurb
+func (b *AlignedNode) Y() Pixel {
+	return b.TopPos + b.Height/2
+}
+
+// Left returns the horizontal position of the leftmost edge of the Blurb
+func (b *AlignedNode) Left() Pixel {
+	if b.AbsolutePositioning {
+		return b.LeftPos
+	}
+	return b.X() - b.Width/2
+}
+
+// Right returns the horizontal position of the rightmost edge of the Node
+func (b *AlignedNode) Right() Pixel {
+	if b.AbsolutePositioning {
+		return b.LeftPos + b.Width
+	}
+	return b.X() + b.Width/2
+}
+
+// Bottom returns the vertical position of the lower edge of the Node
+func (b *AlignedNode) Bottom() Pixel {
+	return b.TopPos + b.Height
+}
+
+func (b *AlignedNode) TopHookX() Pixel {
+	return b.Left() + b.TopHookOffset
+}
+
+func (b *AlignedNode) SideHookY() Pixel {
+	return b.TopPos + b.SideHookOffset
+}
+
+func wrapText(texts []string, maxWidth Pixel, ts TextStyle) []string {
+	if len(texts) == 0 {
+		return []string{}
+	}
+	wrapped := make([]string, 0, len(texts))
+	for i := 0; i < len(texts); i++ {
+		wl := ts.MeasureWidth(texts[i])
+		if wl <= maxWidth {
+			wrapped = append(wrapped, texts[i])
+			continue
+		}
+
+		words := strings.Fields(texts[i])
+		if len(words) == 0 {
+			wrapped = append(wrapped, "")
+			continue
+		}
+
+		var line string
+		for w := 0; w < len(words); w++ {
+			candidate := line
+			if len(line) != 0 {
+				candidate += " "
+			}
+			candidate += words[w]
+			wl := ts.MeasureWidth(candidate)
+			if wl >= maxWidth {
+				if len(line) == 0 {
+					wrapped = append(wrapped, candidate)
+					line = ""
+				} else {
+					wrapped = append(wrapped, line)
+					line = words[w]
+				}
+				continue
+			}
+			line = candidate
+		}
+		wrapped = append(wrapped, line)
+	}
+	return wrapped
+}
+
+func titleDimensions(title string, notes []string, titleStyle TextStyle, noteStyle TextStyle) (Pixel, Pixel) {
+	if title == "" && len(notes) == 0 {
+		return 0, 0
+	}
+
+	var h, w Pixel
+
+	if title != "" {
+		h += titleStyle.LineHeight
+		w = titleStyle.MeasureWidth(title)
+	}
+
+	if len(notes) != 0 {
+		h += noteStyle.LineHeight * Pixel(len(notes))
+		for i := 0; i < len(notes); i++ {
+			wl := noteStyle.MeasureWidth(notes[i])
+			if wl > w {
+				w = wl
+			}
+		}
+	}
+
+	return h, w
 }

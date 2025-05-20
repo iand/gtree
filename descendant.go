@@ -36,8 +36,8 @@ type LayoutOptions struct {
 	Debug      bool // Debug indicates whether to emit logging and debug information.
 	Iterations int  // Number of iterations of adjustment to run
 
-	Hspace     Pixel // Hspace is the horizontal spacing between blurbs within the same family.
-	LineWidth  Pixel // LineWidth is the width of the lines connecting blurbs.
+	Hspace     Pixel // Hspace is the horizontal spacing between nodes within the same family.
+	LineWidth  Pixel // LineWidth is the width of the lines connecting nodes.
 	Margin     Pixel // Margin is the margin added to the entire drawing.
 	FamilyDrop Pixel // FamilyDrop is the length of the line drawn from parents to the children group line.
 	ChildDrop  Pixel // ChildDrop is the length of the line drawn from the children group line to a child.
@@ -45,8 +45,8 @@ type LayoutOptions struct {
 
 	TitleStyle   TextStyleOption // TitleStyle is the style of the font to use for the title of the chart.
 	NoteStyle    TextStyleOption // NoteStyle is the style of the font to use for the notes of the chart.
-	HeadingStyle TextStyleOption // HeadingStyle is the style of the font to use for the first line of each blurb.
-	DetailStyle  TextStyleOption // DetailStyle is the style of the font to use for the subsequent lines of each blurb after the first.
+	HeadingStyle TextStyleOption // HeadingStyle is the style of the font to use for the first line of each node.
+	DetailStyle  TextStyleOption // DetailStyle is the style of the font to use for the subsequent lines of each node after the first.
 
 	DetailWrapWidth Pixel // DetailWrapWidth is the maximum width of detail text before wrapping to a new line.
 }
@@ -91,7 +91,7 @@ func DefaultLayoutOptions() *LayoutOptions {
 
 type TextStyleOption struct {
 	FontNames  []string // list of font names in priority order
-	FontSize   Pixel    // FontSize is the size of the font to use for the text of each blurb.
+	FontSize   Pixel    // FontSize is the size of the font to use for the text of each node.
 	Color      string   // Color is the color of the text. The default is black #000000.
 	LineHeight Pixel    // TODO: remove
 }
@@ -106,7 +106,7 @@ func (ch *DescendantChart) Layout(opts *LayoutOptions) (*DescendantLayout, error
 	l.title = ch.Title
 	l.notes = ch.Notes
 	l.opts = *opts
-	l.blurbs = make(map[int]*Blurb)
+	l.nodes = make(map[int]*AlignedNode)
 	l.generationDrop = l.opts.LineWidth + l.opts.LineGap + l.opts.LineGap + l.opts.ChildDrop + l.opts.FamilyDrop
 
 	ts, err := NewTextStyle(opts.TitleStyle)
@@ -138,6 +138,13 @@ func (ch *DescendantChart) Layout(opts *LayoutOptions) (*DescendantLayout, error
 	a := new(SpreadingDescendantArranger)
 	a.Arrange(l)
 
+	l.legend = LeftAlignedLegend(
+		Point{X: l.opts.Margin, Y: l.opts.Margin},
+		l.title,
+		l.titleStyle,
+		l.notes,
+		l.noteStyle)
+
 	return l, nil
 }
 
@@ -151,14 +158,18 @@ type DescendantLayout struct {
 
 	opts LayoutOptions
 
-	blurbs       map[int]*Blurb
+	nodes        map[int]*AlignedNode
 	connectors   []*Connector
-	rows         [][]*Blurb
+	rows         [][]*AlignedNode
 	titleStyle   TextStyle
 	noteStyle    TextStyle
 	headingStyle TextStyle
 	detailStyle  TextStyle
+
+	legend *Blurb
 }
+
+var _ Layout = (*DescendantLayout)(nil)
 
 // Width returns the width of the layout.
 func (l *DescendantLayout) Width() Pixel { return l.width }
@@ -169,32 +180,16 @@ func (l *DescendantLayout) Height() Pixel { return l.height }
 // Margin returns the margin of the layout.
 func (l *DescendantLayout) Margin() Pixel { return l.opts.Margin }
 
-// Title returns the title element of the layout.
-func (l *DescendantLayout) Title() TextElement {
-	return TextElement{
-		Text:  l.title,
-		Style: l.titleStyle,
-	}
-}
-
-// Notes returns the notes elements of the layout.
-func (l *DescendantLayout) Notes() []TextElement {
-	tes := make([]TextElement, len(l.notes))
-
-	for i := range l.notes {
-		tes[i] = TextElement{
-			Text:  l.notes[i],
-			Style: l.noteStyle,
-		}
-	}
-	return tes
+// Title returns the legend element of the layout.
+func (l *DescendantLayout) Legend() *Blurb {
+	return l.legend
 }
 
 // Blurbs returns all the blurbs in the layout.
 func (l *DescendantLayout) Blurbs() []*Blurb {
-	bs := make([]*Blurb, 0, len(l.blurbs))
-	for _, b := range l.blurbs {
-		bs = append(bs, b)
+	bs := make([]*Blurb, 0, len(l.nodes))
+	for _, n := range l.nodes {
+		bs = append(bs, n.Blurb())
 	}
 	return bs
 }
@@ -208,8 +203,8 @@ func (l *DescendantLayout) Connectors() []*Connector {
 func (l *DescendantLayout) Debug() bool { return l.opts.Debug }
 
 // addPerson adds a person and their family to the layout at the specified row.
-func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb) *Blurb {
-	b := l.newBlurb(p.ID, p.Headings, p.Details, p.Tags, row, parent)
+func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *AlignedNode) *AlignedNode {
+	b := l.newNode(p.ID, p.Headings, p.Details, p.Tags, row, parent)
 
 	for fi := range p.Families {
 		relText := "="
@@ -219,11 +214,11 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 		relDetails := []string{relText}
 		relDetails = append(relDetails, p.Families[fi].Details...)
 
-		var rel, sp *Blurb
-		var famCentre *Blurb
-		// var famRightmost *Blurb
+		var rel, sp *AlignedNode
+		var famCentre *AlignedNode
+		// var famRightmost *Node
 		if p.Families[fi].Other != nil {
-			rel = l.newBlurb(-p.Families[fi].Other.ID, []string{}, relDetails, []string{}, row, nil)
+			rel = l.newNode(-p.Families[fi].Other.ID, []string{}, relDetails, []string{}, row, nil)
 			rel.CentreText = true
 			famCentre = rel
 
@@ -239,7 +234,7 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 			famCentre = b
 		}
 
-		// var prevChild *Blurb
+		// var prevChild *Node
 		for ci := range p.Families[fi].Children {
 			c := l.addPerson(p.Families[fi].Children[ci], row+1, famCentre)
 
@@ -270,10 +265,10 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Blurb
 	return b
 }
 
-// newBlurb creates a new blurb for the given person or family at the specified row.
-func (l *DescendantLayout) newBlurb(id int, headings []string, details []string, tags []string, row int, parent *Blurb) *Blurb {
+// newNode creates a new node for the given person or family at the specified row.
+func (l *DescendantLayout) newNode(id int, headings []string, details []string, tags []string, row int, parent *AlignedNode) *AlignedNode {
 	details = wrapText(details, l.opts.DetailWrapWidth, l.detailStyle)
-	b := &Blurb{
+	b := &AlignedNode{
 		ID:             id,
 		Row:            row,
 		Parent:         parent,
@@ -317,10 +312,10 @@ func (l *DescendantLayout) newBlurb(id int, headings []string, details []string,
 		}
 	}
 
-	l.blurbs[id] = b
+	l.nodes[id] = b
 
 	for len(l.rows) <= row {
-		l.rows = append(l.rows, []*Blurb{})
+		l.rows = append(l.rows, []*AlignedNode{})
 	}
 	l.rows[row] = append(l.rows[row], b)
 
@@ -345,7 +340,7 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 		top += rowHeight + l.generationDrop
 	}
 
-	// spread blurbs in last row evenly
+	// spread nodes in last row evenly
 	left := Pixel(0)
 	bs := l.rows[len(l.rows)-1]
 	for i := range bs {
@@ -364,7 +359,7 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 		return
 	}
 
-	// work up from bottom row spreading out blurbs so subtrees don't overlap
+	// work up from bottom row spreading out nodes so subtrees don't overlap
 	for row := len(l.rows) - 2; row >= 0; row-- {
 		minLeft := Pixel(0)
 		bs := l.rows[row]
@@ -383,7 +378,7 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 				// This is centre point over children
 				x := bs[i].FirstChild.Left() + w/2
 
-				// adjust to the left side of the blurb
+				// adjust to the left side of the node
 				x -= bs[i].Width / 2
 
 				if x < minLeft {
@@ -426,16 +421,16 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 		}
 	}
 
-	a.centreBlurbs(l)
+	a.centreNodes(l)
 
 	// Descendant chart is a top-down layout
 	l.connectors = []*Connector{}
-	for _, b := range l.blurbs {
+	for _, b := range l.nodes {
 		if b.Parent != nil {
 			if b.Parent.ID > 0 && b.Parent.FirstChild == b.Parent.LastChild {
 				l.connectors = append(l.connectors, &Connector{
 					Points: []Point{
-						// Start just above blurb
+						// Start just above node
 						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
 						// Move up to parent
 						{X: b.TopHookX(), Y: b.Parent.Bottom() + l.opts.LineGap},
@@ -444,7 +439,7 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 			} else {
 				l.connectors = append(l.connectors, &Connector{
 					Points: []Point{
-						// Start just above blurb
+						// Start just above node
 						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
 						// Move up by ChildDrop
 						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
@@ -459,7 +454,7 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 	}
 }
 
-func (a *SpreadingDescendantArranger) shiftChildren(l *DescendantLayout, row int, parent *Blurb, shift Pixel) {
+func (a *SpreadingDescendantArranger) shiftChildren(l *DescendantLayout, row int, parent *AlignedNode, shift Pixel) {
 	if parent.FirstChild == nil || row > len(l.rows)-1 {
 		return
 	}
@@ -472,14 +467,14 @@ func (a *SpreadingDescendantArranger) shiftChildren(l *DescendantLayout, row int
 	}
 }
 
-// centreBlurbs centres the blurbs within the layout.
-func (a *SpreadingDescendantArranger) centreBlurbs(l *DescendantLayout) {
+// centreNodes centres the nodes within the layout.
+func (a *SpreadingDescendantArranger) centreNodes(l *DescendantLayout) {
 	var minX, maxX, minY, maxY Pixel
 	initialized := false
 
-	for _, b := range l.blurbs {
+	for _, b := range l.nodes {
 		if l.opts.Debug {
-			slog.Info("blurb position", "l", b.Left(), "r", b.Right(), "t", b.TopPos, "b", b.Bottom())
+			slog.Info("node position", "l", b.Left(), "r", b.Right(), "t", b.TopPos, "b", b.Bottom())
 		}
 		if !initialized {
 			minX = b.Left()

@@ -12,12 +12,8 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-type TextStyle struct {
-	FontSize   Pixel // FontSize is the size of the font to use for the text of each blurb.
-	FontFamily string
-	LineHeight Pixel // LineHeight is the vertical distance between lines of text of the same style.
-	Font       *Font
-	Color      string // Color is the color of the text. The default is black #000000.
+func DefaultSerifFontNames() []string {
+	return []string{"Superclarendon", "Bookman Old Style", "URW Bookman", "URW Bookman L", "Georgia Pro", "Georgia", "serif"}
 }
 
 func NewTextStyle(opt TextStyleOption) (TextStyle, error) {

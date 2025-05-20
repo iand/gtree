@@ -88,7 +88,7 @@ func TestVerticalLayout(t *testing.T) {
 			name: "one person",
 			in:   onePerson,
 			assertions: []layoutAssertion{
-				blurb(1).
+				node(1).
 					hasText("Person One").
 					hasNoParent().
 					hasNoLeftNeighbour().
@@ -99,18 +99,18 @@ func TestVerticalLayout(t *testing.T) {
 			name: "one person with spouse",
 			in:   onePersonWithSpouse,
 			assertions: []layoutAssertion{
-				blurb(1).
+				node(1).
 					hasText("Person One").
 					hasNoParent().
 					hasNoLeftNeighbour().
 					hasKeepTightRight(-2).
 					inRow(0),
-				blurb(-2).
+				node(-2).
 					hasText("=").
 					hasNoParent().
 					hasLeftNeighbour(1).
 					inRow(0),
-				blurb(2).
+				node(2).
 					hasText("Person Two").
 					hasNoParent().
 					hasNoShift().
@@ -122,40 +122,40 @@ func TestVerticalLayout(t *testing.T) {
 			name: "one person with three spouses",
 			in:   onePersonWithThreeSpouses,
 			assertions: []layoutAssertion{
-				blurb(1).
+				node(1).
 					hasText("Person One").
 					hasNoParent().
 					hasNoLeftNeighbour().
 					hasKeepTightRight(-2).
 					inRow(0),
-				blurb(-2).
+				node(-2).
 					hasText("= (1)").
 					hasNoParent().
 					hasLeftNeighbour(1).
 					inRow(0),
-				blurb(2).
+				node(2).
 					hasText("Person Two").
 					hasNoParent().
 					hasNoShift().
 					hasLeftNeighbour(-2).
 					inRow(0),
-				blurb(-3).
+				node(-3).
 					hasText("= (2)").
 					hasNoParent().
 					hasLeftNeighbour(2).
 					inRow(0),
-				blurb(3).
+				node(3).
 					hasText("Person Three").
 					hasNoParent().
 					hasNoShift().
 					hasLeftNeighbour(-3).
 					inRow(0),
-				blurb(-4).
+				node(-4).
 					hasText("= (3)").
 					hasNoParent().
 					hasLeftNeighbour(3).
 					inRow(0),
-				blurb(4).
+				node(4).
 					hasText("Person Four").
 					hasNoShift().
 					hasLeftNeighbour(-4).
@@ -166,29 +166,29 @@ func TestVerticalLayout(t *testing.T) {
 			name: "one person with spouse and children",
 			in:   onePersonWithSpouseAndChildren,
 			assertions: []layoutAssertion{
-				blurb(1).
+				node(1).
 					hasText("Person One").
 					hasNoParent().
 					hasNoLeftNeighbour().
 					hasKeepTightRight(-2).
 					inRow(0),
-				blurb(-2).
+				node(-2).
 					hasText("=").
 					hasNoParent().
 					hasLeftNeighbour(1).
 					inRow(0),
-				blurb(2).
+				node(2).
 					hasText("Person Two").
 					hasNoParent().
 					hasNoShift().
 					hasLeftNeighbour(-2).
 					inRow(0),
-				blurb(3).
+				node(3).
 					hasText("Person Three").
 					hasParent(-2).
 					hasNoLeftNeighbour().
 					inRow(1),
-				blurb(4).
+				node(4).
 					hasText("Person Four").
 					inRow(1).
 					hasParent(-2).
@@ -216,19 +216,19 @@ type layoutAssertion interface {
 	assert(*testing.T, *DescendantLayout)
 }
 
-func blurb(id int) *blurbAsserter {
-	return &blurbAsserter{id: id}
+func node(id int) *nodeAsserter {
+	return &nodeAsserter{id: id}
 }
 
-type blurbAsserter struct {
+type nodeAsserter struct {
 	id  int
-	fns []func(t *testing.T, b *Blurb, l *DescendantLayout)
+	fns []func(t *testing.T, b *AlignedNode, l *DescendantLayout)
 }
 
-func (a *blurbAsserter) assert(t *testing.T, l *DescendantLayout) {
-	b, ok := l.blurbs[a.id]
+func (a *nodeAsserter) assert(t *testing.T, l *DescendantLayout) {
+	b, ok := l.nodes[a.id]
 	if !ok {
-		t.Errorf("blurb %d is missing", a.id)
+		t.Errorf("node %d is missing", a.id)
 		return
 	}
 
@@ -237,40 +237,40 @@ func (a *blurbAsserter) assert(t *testing.T, l *DescendantLayout) {
 	}
 }
 
-func (ba *blurbAsserter) hasText(texts ...string) *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+func (ba *nodeAsserter) hasText(texts ...string) *nodeAsserter {
+	ba.fns = append(ba.fns, func(t *testing.T, b *AlignedNode, l *DescendantLayout) {
 		if len(b.DetailTexts.Lines) != len(texts)-1 {
-			t.Fatalf("blurb %d: got %d detail texts, wanted %d", ba.id, len(b.DetailTexts.Lines), len(texts)-1)
+			t.Fatalf("node %d: got %d detail texts, wanted %d", ba.id, len(b.DetailTexts.Lines), len(texts)-1)
 		}
 
 		for i := range texts {
 			if i < len(b.HeadingTexts.Lines) {
 				if b.HeadingTexts.Lines[i] != texts[i] {
-					t.Errorf("blurb %d: got heading text %q, wanted %q", ba.id, b.HeadingTexts.Lines[i], texts[i])
+					t.Errorf("node %d: got heading text %q, wanted %q", ba.id, b.HeadingTexts.Lines[i], texts[i])
 				}
 				continue
 			}
 			if b.DetailTexts.Lines[i-len(b.HeadingTexts.Lines)] != texts[i] {
-				t.Errorf("blurb %d: got detail text %q, wanted %q", ba.id, b.DetailTexts.Lines[i-1], texts[i])
+				t.Errorf("node %d: got detail text %q, wanted %q", ba.id, b.DetailTexts.Lines[i-1], texts[i])
 			}
 		}
 	})
 	return ba
 }
 
-func (ba *blurbAsserter) inRow(row int) *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+func (ba *nodeAsserter) inRow(row int) *nodeAsserter {
+	ba.fns = append(ba.fns, func(t *testing.T, b *AlignedNode, l *DescendantLayout) {
 		if b.Row != row {
-			t.Errorf("blurb %d: got row %d, wanted %d", b.ID, b.Row, row)
+			t.Errorf("node %d: got row %d, wanted %d", b.ID, b.Row, row)
 		}
 
 		if len(l.rows) <= row {
-			t.Errorf("blurb %d: layout didn't have row %d", ba.id, row)
+			t.Errorf("node %d: layout didn't have row %d", ba.id, row)
 			return
 		}
 
 		if len(l.rows[row]) == 0 {
-			t.Errorf("blurb %d: layout didn't have any blurbs in row %d", ba.id, row)
+			t.Errorf("node %d: layout didn't have any nodes in row %d", ba.id, row)
 			return
 
 		}
@@ -280,97 +280,97 @@ func (ba *blurbAsserter) inRow(row int) *blurbAsserter {
 				return
 			}
 		}
-		t.Errorf("blurb %d: missing from layout row %d", ba.id, row)
+		t.Errorf("node %d: missing from layout row %d", ba.id, row)
 	})
 	return ba
 }
 
-func (ba *blurbAsserter) hasLeftNeighbour(id int) *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+func (ba *nodeAsserter) hasLeftNeighbour(id int) *nodeAsserter {
+	ba.fns = append(ba.fns, func(t *testing.T, b *AlignedNode, l *DescendantLayout) {
 		if b.LeftNeighbour == nil {
-			t.Errorf("blurb %d: got no left neighbour, wanted %d", ba.id, id)
+			t.Errorf("node %d: got no left neighbour, wanted %d", ba.id, id)
 		} else {
 			if b.LeftNeighbour.ID != id {
-				t.Errorf("blurb %d: got left neighbour %d, wanted %d", ba.id, b.LeftNeighbour.ID, id)
+				t.Errorf("node %d: got left neighbour %d, wanted %d", ba.id, b.LeftNeighbour.ID, id)
 			}
 		}
 	})
 	return ba
 }
 
-func (ba *blurbAsserter) hasNoLeftNeighbour() *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+func (ba *nodeAsserter) hasNoLeftNeighbour() *nodeAsserter {
+	ba.fns = append(ba.fns, func(t *testing.T, b *AlignedNode, l *DescendantLayout) {
 		if b.LeftNeighbour != nil {
-			t.Errorf("blurb %d: got left neighbour %d, wanted none", ba.id, b.LeftNeighbour.ID)
+			t.Errorf("node %d: got left neighbour %d, wanted none", ba.id, b.LeftNeighbour.ID)
 		}
 	})
 	return ba
 }
 
-func (ba *blurbAsserter) hasParent(id int) *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+func (ba *nodeAsserter) hasParent(id int) *nodeAsserter {
+	ba.fns = append(ba.fns, func(t *testing.T, b *AlignedNode, l *DescendantLayout) {
 		if b.Parent == nil {
-			t.Errorf("blurb %d: got no parent, wanted %d", ba.id, id)
+			t.Errorf("node %d: got no parent, wanted %d", ba.id, id)
 		} else {
 			if b.Parent.ID != id {
-				t.Errorf("blurb %d: got parent %d, wanted %d", ba.id, b.Parent.ID, id)
+				t.Errorf("node %d: got parent %d, wanted %d", ba.id, b.Parent.ID, id)
 			}
 		}
 	})
 	return ba
 }
 
-func (ba *blurbAsserter) hasNoParent() *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+func (ba *nodeAsserter) hasNoParent() *nodeAsserter {
+	ba.fns = append(ba.fns, func(t *testing.T, b *AlignedNode, l *DescendantLayout) {
 		if b.Parent != nil {
-			t.Errorf("blurb %d: got parent %d, wanted none", ba.id, b.Parent.ID)
+			t.Errorf("node %d: got parent %d, wanted none", ba.id, b.Parent.ID)
 		}
 	})
 	return ba
 }
 
-func (ba *blurbAsserter) hasNoShift() *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+func (ba *nodeAsserter) hasNoShift() *nodeAsserter {
+	ba.fns = append(ba.fns, func(t *testing.T, b *AlignedNode, l *DescendantLayout) {
 		if !b.NoShift {
-			t.Errorf("blurb %d: got allowed to shift, wanted no shift", ba.id)
+			t.Errorf("node %d: got allowed to shift, wanted no shift", ba.id)
 		}
 	})
 	return ba
 }
 
-// func (ba *blurbAsserter) hasLeftStop(id int) *blurbAsserter {
-// 	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+// func (ba *nodeAsserter) hasLeftStop(id int) *nodeAsserter {
+// 	ba.fns = append(ba.fns, func(t *testing.T, b *Node, l *DescendantLayout) {
 // 		if b.LeftStop == nil {
-// 			t.Errorf("blurb %d: got no left stop, wanted %d", ba.id, id)
+// 			t.Errorf("node %d: got no left stop, wanted %d", ba.id, id)
 // 		} else {
 // 			if b.LeftStop.ID != id {
-// 				t.Errorf("blurb %d: got left stop %d, wanted %d", ba.id, b.LeftStop.ID, id)
+// 				t.Errorf("node %d: got left stop %d, wanted %d", ba.id, b.LeftStop.ID, id)
 // 			}
 // 		}
 // 	})
 // 	return ba
 // }
 
-// func (ba *blurbAsserter) hasRightStop(id int) *blurbAsserter {
-// 	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+// func (ba *nodeAsserter) hasRightStop(id int) *nodeAsserter {
+// 	ba.fns = append(ba.fns, func(t *testing.T, b *Node, l *DescendantLayout) {
 // 		if b.RightStop == nil {
-// 			t.Errorf("blurb %d: got no right stop, wanted %d", ba.id, id)
+// 			t.Errorf("node %d: got no right stop, wanted %d", ba.id, id)
 // 		} else {
 // 			if b.RightStop.ID != id {
-// 				t.Errorf("blurb %d: got right stop %d, wanted %d", ba.id, b.RightStop.ID, id)
+// 				t.Errorf("node %d: got right stop %d, wanted %d", ba.id, b.RightStop.ID, id)
 // 			}
 // 		}
 // 	})
 // 	return ba
 // }
 
-func (ba *blurbAsserter) hasKeepTightRight(id int) *blurbAsserter {
-	ba.fns = append(ba.fns, func(t *testing.T, b *Blurb, l *DescendantLayout) {
+func (ba *nodeAsserter) hasKeepTightRight(id int) *nodeAsserter {
+	ba.fns = append(ba.fns, func(t *testing.T, b *AlignedNode, l *DescendantLayout) {
 		if b.KeepTightRight == nil {
-			t.Errorf("blurb %d: missing keep tight right %d", ba.id, id)
+			t.Errorf("node %d: missing keep tight right %d", ba.id, id)
 		} else {
 			if b.KeepTightRight.ID != id {
-				t.Errorf("blurb %d: incorrect keep tight right %d, wanted %d", ba.id, b.KeepTightRight.ID, id)
+				t.Errorf("node %d: incorrect keep tight right %d, wanted %d", ba.id, b.KeepTightRight.ID, id)
 			}
 		}
 	})
