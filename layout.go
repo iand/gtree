@@ -10,6 +10,7 @@ type Layout interface {
 	Blurbs() []*Blurb
 	Connectors() []*Connector
 	Debug() bool
+	Background() string // raw svg to use as a background
 }
 
 // Connector represents a connection between two or more points in the layout, typically used to draw lines between blurbs.
@@ -106,6 +107,54 @@ func CenterAlignedLegend(topCenter Point, title string, titleStyle TextStyle, no
 	legend.Y = topCenter.Y + titleStyle.LineHeight/2
 	legend.Alignment = AlignmentCenter
 	return legend
+}
+
+func CenterAlignedTitle(topCenter Point, title string, preTitle string, postTitle string, titleStyle TextStyle, subTitleStyle TextStyle) *Blurb {
+	b := &Blurb{
+		Texts:     []TextSection{},
+		Alignment: AlignmentCenter,
+	}
+
+	if preTitle != "" {
+		b.Texts = append(b.Texts, TextSection{
+			Lines: []string{preTitle},
+			Style: subTitleStyle,
+		})
+	}
+	if title != "" {
+		b.Texts = append(b.Texts, TextSection{
+			Lines: []string{title},
+			Style: titleStyle,
+		})
+	}
+	if postTitle != "" {
+		b.Texts = append(b.Texts, TextSection{
+			Lines: []string{postTitle},
+			Style: subTitleStyle,
+		})
+	}
+
+	b.X = topCenter.X
+	b.Y = topCenter.Y + titleStyle.LineHeight/2
+
+	MeasureBlurb(b)
+	return b
+}
+
+func RightAlignedNotes(topRight Point, notes []string, noteStyle TextStyle) *Blurb {
+	b := &Blurb{
+		Texts: []TextSection{
+			{
+				Lines: notes,
+				Style: noteStyle,
+			},
+		},
+		Alignment: AlignmentRight,
+	}
+	MeasureBlurb(b)
+	b.X = topRight.X - b.Width
+	b.Y = topRight.Y - b.Height/2
+	return b
 }
 
 func newLegend(title string, titleStyle TextStyle, notes []string, noteStyle TextStyle) *Blurb {

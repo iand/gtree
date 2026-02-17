@@ -185,6 +185,8 @@ func (l *DescendantLayout) Legend() *Blurb {
 	return l.legend
 }
 
+func (l *DescendantLayout) Background() string { return "" }
+
 // Blurbs returns all the blurbs in the layout.
 func (l *DescendantLayout) Blurbs() []*Blurb {
 	bs := make([]*Blurb, 0, len(l.nodes))

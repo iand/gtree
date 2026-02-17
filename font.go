@@ -23,12 +23,12 @@ func NewTextStyle(opt TextStyleOption) (TextStyle, error) {
 		Color:      opt.Color,
 	}
 
-	fnt, err := loadFirstFont(opt.FontNames...)
+	fd, err := loadFirstFont(opt.FontNames...)
 	if err != nil {
 		return ts, err
 	}
 
-	family, err := fnt.Name(nil, sfnt.NameIDFamily)
+	family, err := fd.Font.Name(nil, sfnt.NameIDFamily)
 	if err != nil {
 		return ts, err
 	}
@@ -36,7 +36,7 @@ func NewTextStyle(opt TextStyleOption) (TextStyle, error) {
 	dpi := 72.0
 	pointSize := float64(opt.FontSize) * dpi / 72.0
 
-	tf, err := opentype.NewFace(fnt, &opentype.FaceOptions{
+	tf, err := opentype.NewFace(fd.Font, &opentype.FaceOptions{
 		Size:    pointSize,
 		DPI:     dpi,
 		Hinting: font.HintingNone,
@@ -47,8 +47,9 @@ func NewTextStyle(opt TextStyleOption) (TextStyle, error) {
 
 	ts.FontFamily = family
 	ts.Font = &Font{
-		Name: family,
-		tf:   tf,
+		Name:  family,
+		Bytes: fd.Bytes,
+		tf:    tf,
 	}
 
 	return ts, nil
@@ -183,16 +184,22 @@ func fallbackTextWidth(t []rune, fontSize Pixel) Pixel {
 }
 
 type Font struct {
-	Name string
-	tf   font.Face
+	Name  string
+	Bytes []byte
+	tf    font.Face
+}
+
+type FontData struct {
+	Font  *opentype.Font
+	Bytes []byte
 }
 
 var (
-	fontCache   = map[string]*opentype.Font{}
+	fontCache   = map[string]*FontData{}
 	fontCacheMu sync.Mutex
 )
 
-func loadFirstFont(fontNames ...string) (*opentype.Font, error) {
+func loadFirstFont(fontNames ...string) (*FontData, error) {
 	fontCacheMu.Lock()
 	defer fontCacheMu.Unlock()
 
@@ -207,16 +214,21 @@ func loadFirstFont(fontNames ...string) (*opentype.Font, error) {
 		}
 
 		// load the font with the freetype library
-		fontData, err := os.ReadFile(fontPath)
+		data, err := os.ReadFile(fontPath)
 		if err != nil {
 			continue
 		}
-		tf, err := opentype.Parse(fontData)
+		tf, err := opentype.Parse(data)
 		if err != nil {
 			continue
 		}
 
-		return tf, nil
+		fd := &FontData{
+			Font:  tf,
+			Bytes: data,
+		}
+		fontCache[fname] = fd
+		return fd, nil
 	}
 
 	return nil, fmt.Errorf("no matching fonts found")

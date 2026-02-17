@@ -2,6 +2,7 @@ package gtree
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"html"
 	"strings"
@@ -26,8 +27,37 @@ func SVG(lay Layout, ps PaperSize) (string, error) {
 	fmt.Fprintf(buf, "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
 	fmt.Fprintf(buf, "<svg viewBox=\"0 0 %s %s\" width=\"%gmm\" height=\"%gmm\" xmlns=\"http://www.w3.org/2000/svg\">\n", length(lay.Width()), length(lay.Height()), ps.Width, ps.Height)
 
+	// embed fonts
+	fonts := map[string][]byte{}
+	for _, b := range lay.Blurbs() {
+		for _, t := range b.Texts {
+			if _, ok := fonts[t.Style.FontFamily]; ok {
+				continue
+			}
+			fonts[t.Style.FontFamily] = t.Style.Font.Bytes
+		}
+	}
+	if len(fonts) > 0 {
+		fmt.Fprintf(buf, "<defs>\n")
+		for family, data := range fonts {
+			fmt.Fprintf(buf, "<style type=\"text/css\">\n")
+			fmt.Fprintf(buf, "<![CDATA[\n")
+			fmt.Fprintf(buf, "@font-face {\n")
+			fmt.Fprintf(buf, "	font-family: '%s';\n", family)
+			fmt.Fprintf(buf, "	src: url('data:application/x-font-ttf;base64,%s');\n", base64.StdEncoding.EncodeToString(data))
+			fmt.Fprintf(buf, "	}\n")
+			fmt.Fprintf(buf, "]]>\n")
+			fmt.Fprintf(buf, "</style>\n")
+		}
+		fmt.Fprintf(buf, "</defs>\n")
+	}
+
 	// White background
 	fmt.Fprintln(buf, `<rect width="100%" height="100%" fill="white"/>`)
+
+	if lay.Background() != "" {
+		fmt.Fprintln(buf, lay.Background())
+	}
 
 	// draw legend
 	svgBlurb(buf, lay.Legend(), lay.Debug())
@@ -75,7 +105,7 @@ func svgBlurb(buf *bytes.Buffer, b *Blurb, debug bool) {
 		textAnchor = "middle"
 	}
 	fmt.Fprintf(buf, "<g transform=\"%s\">\n", transform)
-	fmt.Fprintf(buf, "<text x=\"0\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\">\n", length(-b.Height/2), textAnchor)
+	fmt.Fprintf(buf, "<text x=\"0\" y=\"%s\" dominant-baseline=\"auto\" text-anchor=\"%s\">\n", length(-b.Height/2), textAnchor)
 	// fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\">\n", textx, length(top), textAnchor)
 	for _, t := range b.Texts {
 		for _, line := range t.Lines {

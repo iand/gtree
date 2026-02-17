@@ -344,6 +344,7 @@ func (l *AncestorLayout) Margin() Pixel { return l.opts.Margin }
 func (l *AncestorLayout) Legend() *Blurb {
 	return l.legend
 }
+func (l *AncestorLayout) Background() string { return "" }
 
 // Blurbs returns all the blurbs in the layout.
 func (l *AncestorLayout) Blurbs() []*Blurb {
