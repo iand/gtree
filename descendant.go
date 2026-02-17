@@ -331,7 +331,18 @@ func (l *DescendantLayout) newNode(id int, headings []string, details []string, 
 type SpreadingDescendantArranger struct{}
 
 func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
-	// spread rows vertically
+	a.assignVerticalPositions(l)
+	a.spreadLastRow(l)
+	if len(l.rows) > 1 {
+		a.centreParentsOverChildren(l)
+	}
+	a.centreNodes(l)
+	a.buildConnectors(l)
+}
+
+// assignVerticalPositions sets the vertical position of each row and
+// links horizontal neighbours within each row.
+func (a *SpreadingDescendantArranger) assignVerticalPositions(l *DescendantLayout) {
 	top := Pixel(0)
 	for _, bs := range l.rows {
 		rowHeight := Pixel(0)
@@ -345,117 +356,134 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 		}
 		top += rowHeight + l.generationDrop
 	}
+}
 
-	// spread nodes in last row evenly
+// spreadLastRow places the leaf row nodes left to right with spacing,
+// adding extra space between different families.
+func (a *SpreadingDescendantArranger) spreadLastRow(l *DescendantLayout) {
 	left := Pixel(0)
 	bs := l.rows[len(l.rows)-1]
 	for i := range bs {
 		if i > 0 {
 			left += l.opts.Hspace
 			if bs[i].Parent != bs[i-1].Parent {
-				// extra space between families
 				left += l.opts.Hspace * 2
 			}
 		}
 		bs[i].LeftPos = left
 		left += bs[i].Width
 	}
+}
 
-	if len(l.rows) == 1 {
-		return
-	}
-
-	// work up from bottom row spreading out nodes so subtrees don't overlap
+// centreParentsOverChildren works from the second-to-last row upward,
+// centering each node that has children over its child span. After
+// positioning each row it immediately applies tight-packing so that
+// the row above sees final positions.
+func (a *SpreadingDescendantArranger) centreParentsOverChildren(l *DescendantLayout) {
 	for row := len(l.rows) - 2; row >= 0; row-- {
-		minLeft := Pixel(0)
 		bs := l.rows[row]
-		for i := range bs {
-			if i > 0 {
-				minLeft += l.opts.Hspace
-				if bs[i].Parent != bs[i-1].Parent {
-					// extra space between families
-					minLeft += l.opts.Hspace * 2
-				}
-			}
-			if bs[i].FirstChild != nil {
-				// centre over children
-				w := bs[i].LastChild.Right() - bs[i].FirstChild.Left()
-
-				// This is centre point over children
-				x := bs[i].FirstChild.Left() + w/2
-
-				// adjust to the left side of the node
-				x -= bs[i].Width / 2
-
-				if x < minLeft {
-					for j := i; j < len(bs); j++ {
-						a.shiftChildren(l, row+1, bs[j], minLeft-x)
-					}
-				} else {
-					minLeft = x
-				}
-
-			}
-
-			bs[i].LeftPos = minLeft
-			minLeft += bs[i].Width
-
-		}
-
-		// Apply KeepTightRight for this row immediately so that
-		// nodes are at their final positions before the next row
-		// up tries to centre over them.
-		for i := 0; i < len(bs)-2; i++ {
-			if bs[i].KeepTightRight == nil {
-				continue
-			}
-			if bs[i].KeepTightRight != bs[i+1] {
-				continue
-			}
-			bs[i].LeftPos = bs[i+1].Left() - l.opts.Hspace - bs[i].Width
-		}
-
-		// close up gaps by pulling across any early siblings that don't have children
-		for i := len(bs) - 1; i >= 1; i-- {
-			if bs[i-1].FirstChild == nil && bs[i].Parent != nil && bs[i-1].Parent != nil && bs[i].Parent == bs[i-1].Parent && bs[i].Left()-bs[i-1].Right() > l.opts.Hspace {
-				bs[i-1].LeftPos = bs[i].Left() - l.opts.Hspace - bs[i-1].Width
-			}
-		}
+		a.spreadRow(l, bs, row)
+		a.applyKeepTightRight(bs, l.opts.Hspace)
+		a.closeGaps(bs, l.opts.Hspace)
 	}
+}
 
-	a.centreNodes(l)
-
-	// Descendant chart is a top-down layout
-	l.connectors = []*Connector{}
-	for _, b := range l.nodes {
-		if b.Parent != nil {
-			if b.Parent.ID > 0 && b.Parent.FirstChild == b.Parent.LastChild {
-				l.connectors = append(l.connectors, &Connector{
-					Points: []Point{
-						// Start just above node
-						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
-						// Move up to parent
-						{X: b.TopHookX(), Y: b.Parent.Bottom() + l.opts.LineGap},
-					},
-				})
-			} else {
-				l.connectors = append(l.connectors, &Connector{
-					Points: []Point{
-						// Start just above node
-						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
-						// Move up by ChildDrop
-						{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
-						// Move horizontally to centre of parent
-						{X: b.Parent.X(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
-						// Move up to centre of parent
-						{X: b.Parent.X(), Y: b.Parent.Bottom() + l.opts.LineGap},
-					},
-				})
+// spreadRow positions each node in a row, centering nodes that have
+// children over their child span. If a node's children are too far
+// left, they are shifted right to avoid overlap.
+func (a *SpreadingDescendantArranger) spreadRow(l *DescendantLayout, bs []*AlignedNode, row int) {
+	minLeft := Pixel(0)
+	for i := range bs {
+		if i > 0 {
+			minLeft += l.opts.Hspace
+			if bs[i].Parent != bs[i-1].Parent {
+				minLeft += l.opts.Hspace * 2
 			}
+		}
+		if bs[i].FirstChild != nil {
+			childSpan := bs[i].LastChild.Right() - bs[i].FirstChild.Left()
+			childCentre := bs[i].FirstChild.Left() + childSpan/2
+			x := childCentre - bs[i].Width/2
+
+			if x < minLeft {
+				shift := minLeft - x
+				for j := i; j < len(bs); j++ {
+					a.shiftChildren(l, row+1, bs[j], shift)
+				}
+			} else {
+				minLeft = x
+			}
+		}
+
+		bs[i].LeftPos = minLeft
+		minLeft += bs[i].Width
+	}
+}
+
+// applyKeepTightRight positions each node that has a KeepTightRight
+// reference so it sits immediately to the left of that neighbour.
+// This pulls a person node tight against its relationship marker.
+func (a *SpreadingDescendantArranger) applyKeepTightRight(bs []*AlignedNode, hspace Pixel) {
+	for i := 0; i < len(bs)-2; i++ {
+		if bs[i].KeepTightRight == nil || bs[i].KeepTightRight != bs[i+1] {
+			continue
+		}
+		bs[i].LeftPos = bs[i+1].Left() - hspace - bs[i].Width
+	}
+}
+
+// closeGaps pulls childless nodes toward their right sibling when
+// they share the same parent and there is excess space between them.
+func (a *SpreadingDescendantArranger) closeGaps(bs []*AlignedNode, hspace Pixel) {
+	for i := len(bs) - 1; i >= 1; i-- {
+		prev := bs[i-1]
+		cur := bs[i]
+		if prev.FirstChild != nil {
+			continue
+		}
+		if prev.Parent == nil || cur.Parent == nil || prev.Parent != cur.Parent {
+			continue
+		}
+		if cur.Left()-prev.Right() > hspace {
+			prev.LeftPos = cur.Left() - hspace - prev.Width
 		}
 	}
 }
 
+// buildConnectors creates the vertical and horizontal lines connecting
+// each child node to its parent.
+func (a *SpreadingDescendantArranger) buildConnectors(l *DescendantLayout) {
+	l.connectors = []*Connector{}
+	for _, b := range l.nodes {
+		if b.Parent == nil {
+			continue
+		}
+
+		onlyChild := b.Parent.ID > 0 && b.Parent.FirstChild == b.Parent.LastChild
+		if onlyChild {
+			// Straight vertical line to parent
+			l.connectors = append(l.connectors, &Connector{
+				Points: []Point{
+					{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
+					{X: b.TopHookX(), Y: b.Parent.Bottom() + l.opts.LineGap},
+				},
+			})
+		} else {
+			// L-shaped connector via a horizontal group line
+			l.connectors = append(l.connectors, &Connector{
+				Points: []Point{
+					{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap},
+					{X: b.TopHookX(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
+					{X: b.Parent.X(), Y: b.TopPos - l.opts.LineGap - l.opts.ChildDrop},
+					{X: b.Parent.X(), Y: b.Parent.Bottom() + l.opts.LineGap},
+				},
+			})
+		}
+	}
+}
+
+// shiftChildren recursively shifts all descendants of parent on the
+// given row and below by the specified amount.
 func (a *SpreadingDescendantArranger) shiftChildren(l *DescendantLayout, row int, parent *AlignedNode, shift Pixel) {
 	if parent.FirstChild == nil || row > len(l.rows)-1 {
 		return
