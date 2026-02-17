@@ -42,6 +42,8 @@ type FanLayoutOptions struct {
 	DetailStyle    TextStyleOption // DetailStyle is the style of the font to use for the subsequent lines of each node after the first.
 	DPI            int
 
+	BackgroundColor string // BackgroundColor is the color of the background, empty for transparent/no-background fill
+
 	titleStyle     TextStyle
 	subTitleStyle  TextStyle
 	noteStyle      TextStyle
@@ -92,6 +94,8 @@ func DefaultFanLayoutOptions() *FanLayoutOptions {
 			LineHeight: 18,
 			Color:      "#000",
 		},
+
+		BackgroundColor: "#FFF",
 	}
 }
 
@@ -272,13 +276,14 @@ func GenerateFanLayout(chart *FanChart, opts *FanLayoutOptions) (*FanLayout, err
 	blurbs = append(blurbs, notes)
 
 	layout := &FanLayout{
-		legend:     legend,
-		blurbs:     blurbs,
-		connectors: connectors,
-		extent:     Extent{Width: width, Height: height},
-		margin:     margin,
-		debug:      opts.Debug,
-		background: bg,
+		legend:          legend,
+		blurbs:          blurbs,
+		connectors:      connectors,
+		extent:          Extent{Width: width, Height: height},
+		margin:          margin,
+		debug:           opts.Debug,
+		background:      bg,
+		backgroundColor: opts.BackgroundColor,
 	}
 
 	return layout, nil
@@ -448,13 +453,14 @@ func projectFrom(p1, p2 Point, d Pixel) Point {
 
 // FanLayout implements the gtree.Layout interface, representing the output of a radial ancestor layout.
 type FanLayout struct {
-	legend     *Blurb
-	blurbs     []*Blurb
-	connectors []*Connector
-	margin     Pixel
-	debug      bool
-	extent     Extent
-	background string
+	legend          *Blurb
+	blurbs          []*Blurb
+	connectors      []*Connector
+	margin          Pixel
+	debug           bool
+	extent          Extent
+	background      string
+	backgroundColor string
 }
 
 func (f *FanLayout) Height() Pixel            { return f.extent.Height }
@@ -465,6 +471,7 @@ func (f *FanLayout) Blurbs() []*Blurb         { return f.blurbs }
 func (f *FanLayout) Connectors() []*Connector { return f.connectors }
 func (f *FanLayout) Debug() bool              { return f.debug }
 func (f *FanLayout) Background() string       { return f.background }
+func (f *FanLayout) BackgroundColor() string  { return f.backgroundColor }
 
 var _ Layout = (*FanLayout)(nil)
 

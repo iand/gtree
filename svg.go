@@ -21,11 +21,15 @@ import (
 //
 // The function iterates over the layout elements (title, notes, blurbs, connectors), converts their properties to SVG-compatible attributes,
 // and appends them to an internal buffer. Finally, it returns the complete SVG as a string.
-func SVG(lay Layout, ps PaperSize) (string, error) {
+func SVG(lay Layout, ps *PaperSize) (string, error) {
 	buf := new(bytes.Buffer)
 
 	fmt.Fprintf(buf, "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
-	fmt.Fprintf(buf, "<svg viewBox=\"0 0 %s %s\" width=\"%gmm\" height=\"%gmm\" xmlns=\"http://www.w3.org/2000/svg\">\n", length(lay.Width()), length(lay.Height()), ps.Width, ps.Height)
+	if ps != nil {
+		fmt.Fprintf(buf, "<svg viewBox=\"0 0 %s %s\" width=\"%gmm\" height=\"%gmm\" xmlns=\"http://www.w3.org/2000/svg\">\n", length(lay.Width()), length(lay.Height()), ps.Width, ps.Height)
+	} else {
+		fmt.Fprintf(buf, "<svg viewBox=\"0 0 %s %s\" width=\"%s\" height=\"%s\" xmlns=\"http://www.w3.org/2000/svg\">\n", length(lay.Width()), length(lay.Height()), length(lay.Width()), length(lay.Height()))
+	}
 
 	// embed fonts
 	fonts := map[string][]byte{}
@@ -52,8 +56,10 @@ func SVG(lay Layout, ps PaperSize) (string, error) {
 		fmt.Fprintf(buf, "</defs>\n")
 	}
 
-	// White background
-	fmt.Fprintln(buf, `<rect width="100%" height="100%" fill="white"/>`)
+	// Color background
+	if lay.BackgroundColor() != "" {
+		fmt.Fprintf(buf, `<rect width="100%%" height="100%%" fill="%s"/>`, lay.BackgroundColor())
+	}
 
 	if lay.Background() != "" {
 		fmt.Fprintln(buf, lay.Background())
@@ -101,15 +107,16 @@ func svgBlurb(buf *bytes.Buffer, b *Blurb, debug bool) {
 		fmt.Fprintf(buf, "<rect x=\"%s\" y=\"%s\" width=\"%s\" height=\"%s\" fill=\"#eeeeee\"/>", length(left), length(top), length(b.Width), length(b.Height))
 	}
 	textAnchor := "start"
+	textX := -b.Width / 2
 	if b.Alignment == AlignmentCenter {
 		textAnchor = "middle"
+		textX = 0
 	}
 	fmt.Fprintf(buf, "<g transform=\"%s\">\n", transform)
-	fmt.Fprintf(buf, "<text x=\"0\" y=\"%s\" dominant-baseline=\"auto\" text-anchor=\"%s\">\n", length(-b.Height/2), textAnchor)
-	// fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"hanging\" text-anchor=\"%s\">\n", textx, length(top), textAnchor)
+	fmt.Fprintf(buf, "<text x=\"%s\" y=\"%s\" dominant-baseline=\"auto\" text-anchor=\"%s\">\n", length(textX), length(-b.Height/2), textAnchor)
 	for _, t := range b.Texts {
 		for _, line := range t.Lines {
-			fmt.Fprintf(buf, "<tspan x=\"0\" dy=\"%s\" font-size=\"%dpx\" font-family=\"%s\" fill=\"%s\">%s</tspan>\n", length(t.Style.LineHeight), t.Style.FontSize, t.Style.FontFamily, t.Style.Color, html.EscapeString(line))
+			fmt.Fprintf(buf, "<tspan x=\"%s\" dy=\"%s\" font-size=\"%dpx\" font-family=\"%s\" fill=\"%s\">%s</tspan>\n", length(textX), length(t.Style.LineHeight), t.Style.FontSize, t.Style.FontFamily, t.Style.Color, html.EscapeString(line))
 		}
 	}
 	fmt.Fprintf(buf, "</text>\n</g>\n")

@@ -49,6 +49,8 @@ type LayoutOptions struct {
 	DetailStyle  TextStyleOption // DetailStyle is the style of the font to use for the subsequent lines of each node after the first.
 
 	DetailWrapWidth Pixel // DetailWrapWidth is the maximum width of detail text before wrapping to a new line.
+
+	BackgroundColor string // BackgroundColor is the color of the background, empty for transparent/no-background fill
 }
 
 // DefaultLayoutOptions returns the default layout options for rendering the descendant chart.
@@ -86,6 +88,7 @@ func DefaultLayoutOptions() *LayoutOptions {
 			LineHeight: 18,
 			Color:      "#000",
 		},
+		BackgroundColor: "#FFF",
 	}
 }
 
@@ -185,7 +188,8 @@ func (l *DescendantLayout) Legend() *Blurb {
 	return l.legend
 }
 
-func (l *DescendantLayout) Background() string { return "" }
+func (l *DescendantLayout) Background() string      { return "" }
+func (l *DescendantLayout) BackgroundColor() string { return l.opts.BackgroundColor }
 
 // Blurbs returns all the blurbs in the layout.
 func (l *DescendantLayout) Blurbs() []*Blurb {
@@ -397,11 +401,10 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 			minLeft += bs[i].Width
 
 		}
-	}
 
-	// close up gaps by pulling across any early siblings that don't have children
-	for row := range l.rows {
-		bs := l.rows[row]
+		// Apply KeepTightRight for this row immediately so that
+		// nodes are at their final positions before the next row
+		// up tries to centre over them.
 		for i := 0; i < len(bs)-2; i++ {
 			if bs[i].KeepTightRight == nil {
 				continue
@@ -410,12 +413,9 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 				continue
 			}
 			bs[i].LeftPos = bs[i+1].Left() - l.opts.Hspace - bs[i].Width
-
 		}
-	}
-	// close up gaps by pulling across any early siblings that don't have children
-	for row := range l.rows {
-		bs := l.rows[row]
+
+		// close up gaps by pulling across any early siblings that don't have children
 		for i := len(bs) - 1; i >= 1; i-- {
 			if bs[i-1].FirstChild == nil && bs[i].Parent != nil && bs[i-1].Parent != nil && bs[i].Parent == bs[i-1].Parent && bs[i].Left()-bs[i-1].Right() > l.opts.Hspace {
 				bs[i-1].LeftPos = bs[i].Left() - l.opts.Hspace - bs[i-1].Width

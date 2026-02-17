@@ -11,6 +11,7 @@ type Layout interface {
 	Connectors() []*Connector
 	Debug() bool
 	Background() string // raw svg to use as a background
+	BackgroundColor() string
 }
 
 // Connector represents a connection between two or more points in the layout, typically used to draw lines between blurbs.

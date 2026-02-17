@@ -43,6 +43,8 @@ type AncestorLayoutOptions struct {
 	DetailStyle  TextStyleOption // DetailStyle is the style of the font to use for the subsequent lines of each node after the first.
 
 	DetailWrapWidth Pixel // DetailWrapWidth is the maximum width of detail text before wrapping to a new line.
+
+	BackgroundColor string // BackgroundColor is the color of the background, empty for transparent/no-background fill
 }
 
 // DefaultAncestorLayoutOptions returns the default layout options for rendering the ancestor chart.
@@ -81,6 +83,7 @@ func DefaultAncestorLayoutOptions() *AncestorLayoutOptions {
 		},
 
 		DetailWrapWidth: 18 * 16,
+		BackgroundColor: "#FFF",
 	}
 }
 
@@ -344,7 +347,8 @@ func (l *AncestorLayout) Margin() Pixel { return l.opts.Margin }
 func (l *AncestorLayout) Legend() *Blurb {
 	return l.legend
 }
-func (l *AncestorLayout) Background() string { return "" }
+func (l *AncestorLayout) Background() string      { return "" }
+func (l *AncestorLayout) BackgroundColor() string { return l.opts.BackgroundColor }
 
 // Blurbs returns all the blurbs in the layout.
 func (l *AncestorLayout) Blurbs() []*Blurb {
@@ -490,7 +494,7 @@ func (n *AlignedNode) Blurb() *Blurb {
 
 	b.X = n.X()
 	b.Y = n.Y()
-	b.Width = b.Width
+	b.Width = n.Width
 	b.Height = n.Height
 
 	return b
