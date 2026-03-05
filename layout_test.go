@@ -195,6 +195,196 @@ func TestVerticalLayout(t *testing.T) {
 					hasLeftNeighbour(3),
 			},
 		},
+
+		{
+			name: "three descendants with two marriages",
+			in: &DescendantChart{
+				Title: string(""),
+				Notes: []string(nil),
+				Root: &DescendantPerson{
+					ID: int(0),
+					Headings: []string{
+						string("Person 0"),
+					},
+					Details: []string{
+						string("bap. 6 Oct 1714"),
+						string("bur. 11 Oct 1807"),
+					},
+					Families: []*DescendantFamily{
+						{
+							Other: &DescendantPerson{
+								ID: int(1),
+								Headings: []string{
+									string("Person 0 spouse"),
+								},
+								Details: []string{
+									string("bap. 4 Dec 1716"),
+									string("bur. 30 Jan 1810"),
+								},
+								Families: []*DescendantFamily(nil),
+								Tags:     []string(nil),
+							},
+							Details: []string{
+								string("m. 3 Feb 1736/7"),
+								string("bur. 11 Oct 1807"),
+							},
+							Children: []*DescendantPerson{
+								{
+									ID: int(2),
+									Headings: []string{
+										string("Person 2"),
+									},
+									Details: []string{
+										string("bap. 25 Dec 1738"),
+										string("bur. 21 Mar 1815"),
+									},
+									Families: []*DescendantFamily{
+										{
+											Other: &DescendantPerson{
+												ID: int(3),
+												Headings: []string{
+													string("Person 2 first spouse"),
+												},
+												Details: []string{
+													string("bur. 21 Feb 1782"),
+												},
+												Families: []*DescendantFamily(nil),
+												Tags:     []string(nil),
+											},
+											Details: []string{
+												string("m. 28 Jul 1766"),
+												string("bur. 21 Feb 1782"),
+											},
+											Children: []*DescendantPerson{
+												{
+													ID: int(4),
+													Headings: []string{
+														string("Person 3"),
+													},
+													Details: []string{
+														string("bap. 1 May 1767"),
+														string("d. 29 Nov 1854"),
+													},
+													Families: []*DescendantFamily{
+														{
+															Other: &DescendantPerson{
+																ID: int(5),
+																Headings: []string{
+																	string("Person 3 spouse"),
+																},
+																Details: []string{
+																	string("bap. 7 Nov 1762"),
+																	string("bur. 13 Oct 1830"),
+																},
+																Families: []*DescendantFamily(nil),
+																Tags:     []string(nil),
+															},
+															Details: []string{
+																string("m. 13 Oct 1788"),
+																string("bur. 13 Oct 1830"),
+															},
+															Children: []*DescendantPerson(nil),
+														},
+													},
+													Tags: []string(nil),
+												},
+											},
+										},
+										{
+											Other: &DescendantPerson{
+												ID: int(6),
+												Headings: []string{
+													string("Person 2 second spouse"),
+												},
+												Details: []string{
+													string("bap. 19 Mar 1751/2"),
+													string("bur. 8 Jul 1820"),
+												},
+												Families: []*DescendantFamily(nil),
+												Tags:     []string(nil),
+											},
+											Details: []string{
+												string("m. 25 Jul 1785"),
+												string("bur. 21 Mar 1815"),
+											},
+											Children: []*DescendantPerson(nil),
+										},
+									},
+									Tags: []string(nil),
+								},
+							},
+						},
+					},
+					Tags: []string(nil),
+				},
+			},
+			assertions: []layoutAssertion{
+				node(0).
+					hasText("Person 0", "bap. 6 Oct 1714", "bur. 11 Oct 1807").
+					hasNoParent().
+					hasNoLeftNeighbour().
+					hasKeepTightRight(-1).
+					inRow(0),
+				node(-1).
+					hasText("=", "m. 3 Feb 1736/7", "bur. 11 Oct 1807").
+					hasNoParent().
+					hasLeftNeighbour(0).
+					hasKeepTightRight(1).
+					inRow(0),
+				node(1).
+					hasText("Person 0 spouse", "bap. 4 Dec 1716", "bur. 30 Jan 1810").
+					hasNoParent().
+					hasLeftNeighbour(-1).
+					inRow(0),
+
+				node(2).
+					hasText("Person 2", "bap. 25 Dec 1738", "bur. 21 Mar 1815").
+					hasParent(-1).
+					hasNoLeftNeighbour().
+					hasKeepTightRight(-3).
+					inRow(1),
+				node(-3).
+					hasText("= (1)", "m. 28 Jul 1766", "bur. 21 Feb 1782").
+					hasNoParent().
+					hasLeftNeighbour(2).
+					hasKeepTightRight(3).
+					inRow(1),
+				node(3).
+					hasText("Person 2 first spouse", "bur. 21 Feb 1782").
+					hasNoParent().
+					hasLeftNeighbour(-3).
+					inRow(1),
+				node(-6).
+					hasText("= (2)", "m. 25 Jul 1785", "bur. 21 Mar 1815").
+					hasNoParent().
+					hasLeftNeighbour(3).
+					hasKeepTightRight(6).
+					inRow(1),
+				node(6).
+					hasText("Person 2 second spouse", "bap. 19 Mar 1751/2", "bur. 8 Jul 1820").
+					hasNoParent().
+					hasLeftNeighbour(-6).
+					inRow(1),
+
+				node(4).
+					hasText("Person 3", "bap. 1 May 1767", "d. 29 Nov 1854").
+					hasParent(-3).
+					hasNoLeftNeighbour().
+					hasKeepTightRight(-5).
+					inRow(2),
+				node(-5).
+					hasText("=", "m. 13 Oct 1788", "bur. 13 Oct 1830").
+					hasNoParent().
+					hasLeftNeighbour(4).
+					hasKeepTightRight(5).
+					inRow(2),
+				node(5).
+					hasText("Person 3 spouse", "bap. 7 Nov 1762", "bur. 13 Oct 1830").
+					hasNoParent().
+					hasLeftNeighbour(-5).
+					inRow(2),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -207,6 +397,16 @@ func TestVerticalLayout(t *testing.T) {
 
 			for _, a := range tc.assertions {
 				a.assert(t, l)
+			}
+
+			// Check that no two nodes in the same row overlap.
+			for rowIdx, row := range l.rows {
+				for i := 1; i < len(row); i++ {
+					if row[i].Left() < row[i-1].Right() {
+						t.Errorf("row %d: node %d (left=%v) overlaps node %d (right=%v)",
+							rowIdx, row[i].ID, row[i].Left(), row[i-1].ID, row[i-1].Right())
+					}
+				}
 			}
 		})
 	}

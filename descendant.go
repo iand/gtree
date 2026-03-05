@@ -235,6 +235,7 @@ func (l *DescendantLayout) addPerson(p *DescendantPerson, row int, parent *Align
 
 			sp = l.addPerson(p.Families[fi].Other, row, nil)
 			sp.NoShift = true
+			rel.KeepTightRight = sp
 
 		} else {
 			famCentre = b
@@ -336,6 +337,7 @@ func (a *SpreadingDescendantArranger) Arrange(l *DescendantLayout) {
 	if len(l.rows) > 1 {
 		a.centreParentsOverChildren(l)
 	}
+	a.enforceMinSpacing(l)
 	a.centreNodes(l)
 	a.buildConnectors(l)
 }
@@ -446,6 +448,25 @@ func (a *SpreadingDescendantArranger) closeGaps(bs []*AlignedNode, hspace Pixel)
 		}
 		if cur.Left()-prev.Right() > hspace {
 			prev.LeftPos = cur.Left() - hspace - prev.Width
+		}
+	}
+}
+
+// enforceMinSpacing sweeps each row left to right and pushes any node
+// that would overlap its left neighbour rightward, carrying all
+// subsequent nodes in the row with it. This corrects cases where
+// shiftChildren moves a person node but leaves its marriage-connector
+// and spouse nodes (which have no genealogical parent) behind.
+func (a *SpreadingDescendantArranger) enforceMinSpacing(l *DescendantLayout) {
+	for _, bs := range l.rows {
+		for i := 1; i < len(bs); i++ {
+			minLeft := bs[i-1].Right() + l.opts.Hspace
+			if bs[i].Left() < minLeft {
+				shift := minLeft - bs[i].Left()
+				for j := i; j < len(bs); j++ {
+					bs[j].LeftPos += shift
+				}
+			}
 		}
 	}
 }
