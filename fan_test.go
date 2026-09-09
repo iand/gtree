@@ -1,31 +1,8 @@
 package gtree
 
 import (
-	"fmt"
 	"testing"
 )
-
-func makePerson(id int, name string) *FanPerson {
-	return &FanPerson{
-		ID:       id,
-		Headings: []string{name},
-		Details:  []string{},
-	}
-}
-
-func buildGenerations(n int, nextID *int) *FanPerson {
-	if n <= 0 {
-		return nil
-	}
-	p := makePerson(*nextID, fmt.Sprintf("Gen%d, id%d", n, *nextID))
-	*nextID++
-	if n == 1 {
-		return p
-	}
-	p.Father = buildGenerations(n-1, nextID)
-	p.Mother = buildGenerations(n-1, nextID)
-	return p
-}
 
 func TestAssignFanNodes_Generations(t *testing.T) {
 	// const tolerance = 1e-6

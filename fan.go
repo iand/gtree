@@ -410,10 +410,6 @@ func degreesToRadians(deg float64) float64 {
 	return deg * math.Pi / 180
 }
 
-func radiansToDegrees(rad float64) float64 {
-	return rad * 180.0 / math.Pi
-}
-
 func polarToCartesian(radius, angle float64) Point {
 	adjusted := math.Pi/2 - angle // adjust so zero points vertically
 	x := radius * math.Cos(adjusted)
@@ -623,49 +619,6 @@ func slotBoxOutline(gen, slot int, angularSpan, radiusStep float64) []*Connector
 		{Points: []Point{b, c}},
 		{Points: []Point{c, d}},
 		{Points: []Point{d, a}},
-	}
-}
-
-// adjustConnector trims or extends the start and end points of a connector by given distances.
-// Positive values extend the connector, negative values trim it.
-func adjustConnector(conn *Connector, deltaStart, deltaEnd Pixel) {
-	if len(conn.Points) < 2 {
-		return
-	}
-
-	// Start adjustment (keep end fixed, move start)
-	if deltaStart != 0 {
-		p0 := conn.Points[0]
-		p1 := conn.Points[1]
-		dx := float64(p1.X - p0.X)
-		dy := float64(p1.Y - p0.Y)
-		length := math.Hypot(dx, dy)
-		if length != 0 {
-			ux := dx / length
-			uy := dy / length
-			conn.Points[0] = Point{
-				X: Pixel(float64(p0.X) + float64(deltaStart)*ux),
-				Y: Pixel(float64(p0.Y) + float64(deltaStart)*uy),
-			}
-		}
-	}
-
-	// End adjustment (keep start fixed, move end)
-	if deltaEnd != 0 {
-		n := len(conn.Points)
-		p0 := conn.Points[n-2]
-		p1 := conn.Points[n-1]
-		dx := float64(p1.X - p0.X)
-		dy := float64(p1.Y - p0.Y)
-		length := math.Hypot(dx, dy)
-		if length != 0 {
-			ux := dx / length
-			uy := dy / length
-			conn.Points[n-1] = Point{
-				X: Pixel(float64(p1.X) + float64(deltaEnd)*ux),
-				Y: Pixel(float64(p1.Y) + float64(deltaEnd)*uy),
-			}
-		}
 	}
 }
 
